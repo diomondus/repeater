@@ -36,6 +36,16 @@ function loadTerm() {
     storage.get(text, function (error, contents) {
         if (error) throw error;
         const i = parseInt(sessionStorage.getItem("seq"));
+        if (i > 0) {
+            try {
+                let prev = contents[i - 1].orig
+                const url = `https://ssl.gstatic.com/dictionary/static/pronunciation/2022-03-02/audio/${prev.substring(0, 2)}/${prev}_en_us_1.mp3`
+                const audio = new Audio(url);
+                audio.play();
+            } catch (e) {
+                console.log(e)
+            }
+        }
         if (i === contents.length) {
             sessionStorage.setItem("seq", "0");
             clearCtrls()
@@ -182,7 +192,7 @@ document.addEventListener('keydown', function (event) {
             loadTerm()
         } else if (event.key === 'k') {
             showAsso()
-        }  else if (event.key === 'l') {
+        } else if (event.key === 'l') {
             showTerm()
         } else if (event.key === 'u') {
             reverse()
