@@ -9,19 +9,25 @@
 const storage = require('electron-json-storage');
 const os = require("os");
 const fs = require('fs');
-const dataPath = os.homedir() + '/.repeater';
+const appStoragePath = os.homedir() + '/.repeater';
+let dataPath;
 
 prepare()
 
 function prepare() {
-    storage.setDataPath(dataPath);
-    const dir = dataPath + '/pictures';
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
+    let categories = document.getElementById("cat").children
+    for (let i = 0; i < categories.length; i++) {
+        let cat = categories[i].text.toLowerCase()
+        const dir = `${appStoragePath}/${cat}`
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+            fs.mkdirSync(dir + '/pictures');
+        }
     }
-    loadDays()
+
+    onCatSelected()
     sessionStorage.setItem("seq", "0");
-    sessionStorage.setItem("reverse", "false");
+    sessionStorage.setItem("reverse", "true");
 }
 
 function loadTerm() {
@@ -74,9 +80,9 @@ function saveToFile(key, contents) {
             if (err) throw err
 
             contents.push({
-                orig: document.getElementById('orig').value,
+                orig: document.getElementById('orig').value.toLowerCase(),
                 img: fileName,
-                trans: document.getElementById('trans').value,
+                trans: document.getElementById('trans').value.toLowerCase(),
                 addinfo: document.getElementById('add-info').value
             })
             storage.set(key, contents, function (error) {
@@ -96,13 +102,15 @@ function showTerm() {
 }
 
 function showAsso() {
-    console.log(sessionStorage.getItem("content"))
-    let url = dataPath + '/pictures/' + sessionStorage.getItem("image")
-    console.log(url)
-    document.getElementById('image').src = url
+    document.getElementById('image').src = dataPath + '/pictures/' + sessionStorage.getItem("image")
 }
 
 function loadDays() {
+    clearCtrls()
+    let days = document.getElementById("days");
+    if (days.hasChildNodes()) {
+        days.childNodes.forEach(option => days.removeChild(option))
+    }
     storage.keys(function (error, keys) {
         if (error) throw error;
 
@@ -145,6 +153,14 @@ function onDaySelected() {
     sessionStorage.setItem("seq", "0")
 }
 
+function onCatSelected() {
+    const e = document.getElementById("cat");
+    const cat = e.options[e.selectedIndex].text.toLowerCase()
+    dataPath = appStoragePath + '/' + cat
+    storage.setDataPath(dataPath)
+    loadDays()
+}
+
 function clearCtrls() {
     document.getElementById('orig').value = ''
     document.getElementById('image').src = ''
@@ -162,16 +178,16 @@ function getCurrentDate() {
 
 document.addEventListener('keydown', function (event) {
     if (event.metaKey) {
-        if (event.key === 'n') {
+        if (event.key === 'j') {
             loadTerm()
-        } else if (event.key === 'i') {
-            showTerm()
-        } else if (event.key === 's') {
-            saveTerm()
-        } else if (event.key === 'p') {
+        } else if (event.key === 'k') {
             showAsso()
+        }  else if (event.key === 'l') {
+            showTerm()
         } else if (event.key === 'u') {
             reverse()
+        } else if (event.key === 's') {
+            saveTerm()
         }
     }
 });
