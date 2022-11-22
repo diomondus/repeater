@@ -8,32 +8,36 @@
 
 const storage = require('electron-json-storage');
 const os = require("os");
-const dataPath = os.homedir() + '/.repeater';
-storage.setDataPath(dataPath);
 const fs = require('fs');
-const dir = dataPath + '/pictures';
-if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-}
-loadDays()
+const dataPath = os.homedir() + '/.repeater';
 
-sessionStorage.setItem("seq", 0);
-sessionStorage.setItem("reverse", "false");
+prepare()
+
+function prepare() {
+    storage.setDataPath(dataPath);
+    const dir = dataPath + '/pictures';
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir);
+    }
+    loadDays()
+    sessionStorage.setItem("seq", "0");
+    sessionStorage.setItem("reverse", "false");
+}
 
 function loadTerm() {
-    var e = document.getElementById("days");
-    var text = e.options[e.selectedIndex].text.substring(0, 10);
+    const e = document.getElementById("days");
+    const text = e.options[e.selectedIndex].text.substring(0, 10);
     storage.get(text, function (error, contents) {
         if (error) throw error;
-        var i = parseInt(sessionStorage.getItem("seq"))
-        if (i == contents.length) {
-            sessionStorage.setItem("seq", 0);
+        const i = parseInt(sessionStorage.getItem("seq"));
+        if (i === contents.length) {
+            sessionStorage.setItem("seq", "0");
             clearCtrls()
             return
         }
         let content = contents[i]
 
-        if (sessionStorage.getItem("reverse") == "false") {
+        if (sessionStorage.getItem("reverse") === "false") {
             document.getElementById('orig').value = content.orig;
             document.getElementById('trans').value = '';
             sessionStorage.setItem("trans", content.trans);
@@ -43,7 +47,7 @@ function loadTerm() {
             sessionStorage.setItem("orig", content.orig);
         }
 
-        document.getElementById('image').src = '';
+        document.getElementById('image')["src"] = '';
         sessionStorage.setItem("image", content.img);
         document.getElementById('add-info').value = '';
         sessionStorage.setItem("add-info", content.addinfo);
@@ -83,7 +87,7 @@ function saveToFile(key, contents) {
 }
 
 function showTerm() {
-    if (sessionStorage.getItem("reverse") == 'false') {
+    if (sessionStorage.getItem("reverse") === 'false') {
         document.getElementById('trans').value = sessionStorage.getItem("trans")
     } else {
         document.getElementById('orig').value = sessionStorage.getItem("orig")
@@ -102,8 +106,8 @@ function loadDays() {
     storage.keys(function (error, keys) {
         if (error) throw error;
 
-        var today = getCurrentDate()
-        var days = document.getElementById("days");
+        const today = getCurrentDate();
+        const days = document.getElementById("days");
         keys.sort()
             .reverse()
             .map(key => createOption(key, today))
@@ -130,7 +134,7 @@ function createOption(date, today) {
 }
 
 function reverse() {
-    if (sessionStorage.getItem("reverse") == "false") {
+    if (sessionStorage.getItem("reverse") === "false") {
         sessionStorage.setItem("reverse", "true")
     } else {
         sessionStorage.setItem("reverse", "false")
@@ -138,7 +142,7 @@ function reverse() {
 }
 
 function onDaySelected() {
-    sessionStorage.setItem("seq", 0)
+    sessionStorage.setItem("seq", "0")
 }
 
 function clearCtrls() {
@@ -149,10 +153,10 @@ function clearCtrls() {
 }
 
 function getCurrentDate() {
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0');
-    var yyyy = today.getFullYear();
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
     return mm + '-' + dd + '-' + yyyy;
 }
 
@@ -173,13 +177,13 @@ document.addEventListener('keydown', function (event) {
 });
 
 document.onpaste = function (pasteEvent) {
-    var item = pasteEvent.clipboardData.items[0];
+    const item = pasteEvent.clipboardData.items[0];
     if (item.type.indexOf("image") === 0) {
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.onload = function (event) {
             document.getElementById("image").src = event.target.result;
         };
-        var blob = item.getAsFile();
+        const blob = item.getAsFile();
         reader.readAsDataURL(blob);
     }
 }
