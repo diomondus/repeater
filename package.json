@@ -1,0 +1,20 @@
+{
+    "name": "Repeater",
+    "productName": "Repeater",
+    "description": "The Electron app helping to repeat associations",
+    "keywords": [],
+    "main": "./main.js",
+    "version": "1.0.0",
+    "author": "diomondus",
+    "scripts": {
+        "start": "electron ."
+    },
+    "dependencies": {
+        "bootstrap": "5.2.2",
+        "electron-json-storage": "4.6.0"
+    },
+    "devDependencies": {
+        "electron": "^20.1.4",
+        "electron-packager": "^17.1.1"
+    }
+}
