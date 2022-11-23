@@ -15,7 +15,7 @@ let dataPath;
 prepare()
 
 function prepare() {
-    let categories = document.getElementById("cat").children
+    let categories = document.getElementById("cats").children
     for (let i = 0; i < categories.length; i++) {
         let cat = categories[i].text.toLowerCase()
         const dir = `${appStoragePath}/${cat}`
@@ -26,31 +26,31 @@ function prepare() {
     }
 
     onCatSelected()
-    sessionStorage.setItem("seq", "0");
     sessionStorage.setItem("reverse", "true");
 }
 
 function loadTerm() {
-    const e = document.getElementById("days");
-    const text = e.options[e.selectedIndex].text.substring(0, 10);
-    storage.get(text, function (error, contents) {
+    const days = document.getElementById("days");
+    const fileName = days.options[days.selectedIndex].text.substring(0, 10);
+    storage.get(fileName, function (error, contents) {
         if (error) throw error;
-        const i = parseInt(sessionStorage.getItem("seq"));
-        if (i > 0) {
-            try {
-                let prev = contents[i - 1].orig
-                const url = `https://ssl.gstatic.com/dictionary/static/pronunciation/2022-03-02/audio/${prev.substring(0, 2)}/${prev}_en_us_1.mp3`
-                const audio = new Audio(url);
-                audio.play();
-            } catch (e) {
-                console.log(e)
-            }
-        }
-        if (i === contents.length) {
-            sessionStorage.setItem("seq", "0");
+
+        if (sessionStorage.getItem('inds') === null) {
+            console.log('inds is undefined')
             clearCtrls()
-            return
+            onDaySelected()
+            doDirtyHack()
         }
+        let prevInd = sessionStorage.getItem("prev")
+        const cats = document.getElementById("cats");
+        const cat = cats.options[cats.selectedIndex].text
+        if (prevInd !== null && cat === 'Words') {
+            let prevWord = contents[parseInt(prevInd)].orig
+            tryPlayWord(prevWord)
+        }
+
+        let indexies = JSON.parse(sessionStorage.getItem('inds'));
+        let i = indexies.pop()
         let content = contents[i]
 
         if (sessionStorage.getItem("reverse") === "false") {
@@ -67,7 +67,14 @@ function loadTerm() {
         sessionStorage.setItem("image", content.img);
         document.getElementById('add-info').value = '';
         sessionStorage.setItem("add-info", content.addinfo);
-        sessionStorage.setItem("seq", i + 1);
+
+        if (indexies.length === 0) {
+            sessionStorage.removeItem('inds')
+            sessionStorage.removeItem("prev");
+        } else {
+            sessionStorage.setItem('inds', JSON.stringify(indexies));
+            sessionStorage.setItem("prev", i);
+        }
     });
 }
 
@@ -160,15 +167,26 @@ function reverse() {
 }
 
 function onDaySelected() {
-    sessionStorage.setItem("seq", "0")
+    console.log("onDaySelected")
+    const e = document.getElementById("days");
+    if (e.children.length !== 0) {
+        const text = e.options[e.selectedIndex].text.substring(0, 10);
+        storage.get(text, function (error, contents) {
+            const indexies = [...Array(contents.length).keys()];
+            shuffleArray(indexies)
+            sessionStorage.setItem('inds', JSON.stringify(indexies));
+            sessionStorage.removeItem('prev');
+        })
+    }
 }
 
 function onCatSelected() {
-    const e = document.getElementById("cat");
-    const cat = e.options[e.selectedIndex].text.toLowerCase()
+    const cats = document.getElementById("cats");
+    const cat = cats.options[cats.selectedIndex].text.toLowerCase()
     dataPath = appStoragePath + '/' + cat
     storage.setDataPath(dataPath)
     loadDays()
+    onDaySelected()
 }
 
 function clearCtrls() {
@@ -176,6 +194,16 @@ function clearCtrls() {
     document.getElementById('image').src = ''
     document.getElementById('trans').value = ''
     document.getElementById('add-info').value = ''
+}
+
+function doDirtyHack() {
+    if (sessionStorage.getItem('firstLaunch') === null) {
+        try {
+            sessionStorage.setItem('firstLaunch', '0')
+            loadTerm()
+        } catch (e) {
+        }
+    }
 }
 
 function getCurrentDate() {
@@ -211,6 +239,26 @@ document.onpaste = function (pasteEvent) {
         };
         const blob = item.getAsFile();
         reader.readAsDataURL(blob);
+    }
+}
+
+function tryPlayWord(word) {
+    try {
+        const url = `https://ssl.gstatic.com/dictionary/static/pronunciation/2022-03-02/audio/${word.substring(0, 2)}/${word}_en_us_1.mp3`
+        const audio = new Audio(url);
+        audio.play();
+    } catch (e) {
+        console.log(url)x
+        console.log(e)
+    }
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
     }
 }
 

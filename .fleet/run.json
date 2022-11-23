@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Build App",
+            "type": "command",
+            "program": "./build",
+        },
+        {
+            "name": "Start App",
+            "type": "command",
+            "program": "npm",
+            "args": ["start"]
+        },
+    ]
+}
