@@ -6,10 +6,12 @@
  * to expose Node.js functionality from the main process.
  */
 
-const storage = require('electron-json-storage');
-const os = require("os");
-const fs = require('fs');
-const appStoragePath = os.homedir() + '/.repeater';
+const electron = require('electron')
+const ipc = electron.ipcRenderer
+const storage = require('electron-json-storage')
+const os = require("os")
+const fs = require('fs')
+const appStoragePath = os.homedir() + '/.repeater'
 let dataPath;
 
 prepare()
@@ -30,23 +32,21 @@ function prepare() {
 }
 
 function loadTerm() {
-    const days = document.getElementById("days");
-    const fileName = days.options[days.selectedIndex].text.substring(0, 10);
+    const fileName = getSelectedDay()
     storage.get(fileName, function (error, contents) {
         if (error) throw error;
+
+        let prevWord = sessionStorage.getItem("prev")
+        if (prevWord !== null) {
+            tryPlayText(prevWord)
+        }
 
         if (sessionStorage.getItem('inds') === null) {
             console.log('inds is undefined')
             clearCtrls()
+            sessionStorage.removeItem("prev");
             onDaySelected()
             doDirtyHack()
-        }
-        let prevInd = sessionStorage.getItem("prev")
-        const cats = document.getElementById("cats");
-        const cat = cats.options[cats.selectedIndex].text
-        if (prevInd !== null && cat === 'Words') {
-            let prevWord = contents[parseInt(prevInd)].orig
-            tryPlayWord(prevWord)
         }
 
         let indexies = JSON.parse(sessionStorage.getItem('inds'));
@@ -70,43 +70,92 @@ function loadTerm() {
 
         if (indexies.length === 0) {
             sessionStorage.removeItem('inds')
-            sessionStorage.removeItem("prev");
         } else {
             sessionStorage.setItem('inds', JSON.stringify(indexies));
-            sessionStorage.setItem("prev", i);
+            sessionStorage.setItem("prev", content.orig);
         }
     });
 }
 
+function getSelectedDay() {
+    const days = document.getElementById("days");
+    return days.options[days.selectedIndex].text.substring(0, 10);
+}
+
+function updateTerm() {
+    console.log("updateTerm")
+    const orig = document.getElementById('orig').value
+    if (orig !== '') {
+        console.log("updateTerm inside")
+        const fileName = getSelectedDay()
+        storage.get(fileName, function (error, contents) {
+            if (error) throw error
+            let filteredContents = contents.filter(c => {
+                let b = c.orig !== orig
+                if (!b && document.getElementById('image').src.startsWith("data")) {
+                    let fileName = c.img
+                    let filePath = dataPath + '/pictures/' + fileName
+                    fs.unlink(filePath, () => {
+                    })
+                }
+                return b
+            })
+            saveToFile(fileName, filteredContents)
+        });
+    }
+}
+
 function saveTerm() {
-    let key = getCurrentDate()
-    storage.get(key, function (error, contents) {
-        if (error) throw error
-        if (Object.keys(contents).length === 0) contents = []
-        saveToFile(key, contents)
-    });
+    if (document.getElementById('orig').value !== '') {
+        let key = getCurrentDate()
+        storage.get(key, function (error, contents) {
+            if (error) throw error
+            if (Object.keys(contents).length === 0) {
+                contents = []
+            }
+            saveToFile(key, contents)
+        });
+    }
 }
 
 function saveToFile(key, contents) {
     let fileName = uuidv4() + '.png'
     let filePath = dataPath + '/pictures/' + fileName
-    fetch(document.getElementById('image').src)
-        .then(res => res.blob())
-        .then(blob => blob.arrayBuffer())
-        .then(ab => fs.writeFile(filePath, Buffer.from(ab), (err) => {
-            if (err) throw err
+    let image = document.getElementById('image').src
+    if (image.startsWith("data")) {
+        fetch(image)
+            .then(res => res.blob())
+            .then(blob => blob.arrayBuffer())
+            .then(ab => fs.writeFile(filePath, Buffer.from(ab), (err) => {
+                if (err) throw err
 
-            contents.push({
-                orig: document.getElementById('orig').value.toLowerCase(),
-                img: fileName,
-                trans: document.getElementById('trans').value.toLowerCase(),
-                addinfo: document.getElementById('add-info').value
-            })
-            storage.set(key, contents, function (error) {
-                if (error) throw error;
-            });
-            clearCtrls()
-        }))
+                let orig = document.getElementById('orig').value.toLowerCase()
+                tryPlayText(orig)
+                contents.push({
+                    orig: orig,
+                    trans: document.getElementById('trans').value.toLowerCase(),
+                    addinfo: document.getElementById('add-info').value,
+                    img: fileName
+                })
+                storage.set(key, contents, function (error) {
+                    if (error) throw error;
+                });
+                clearCtrls()
+            }))
+    } else {
+        let split = document.getElementById('image').src.split('/')
+        let imgName = split[split.length - 1]
+        contents.push({
+            orig: document.getElementById('orig').value.toLowerCase(),
+            trans: document.getElementById('trans').value.toLowerCase(),
+            addinfo: document.getElementById('add-info').value,
+            img: imgName
+        })
+        storage.set(key, contents, function (error) {
+            if (error) throw error;
+        });
+        clearCtrls()
+    }
 }
 
 function showTerm() {
@@ -126,7 +175,7 @@ function loadDays() {
     clearCtrls()
     let days = document.getElementById("days");
     if (days.hasChildNodes()) {
-        days.childNodes.forEach(option => days.removeChild(option))
+        days.innerHTML = ''
     }
     storage.keys(function (error, keys) {
         if (error) throw error;
@@ -159,11 +208,8 @@ function createOption(date, today) {
 }
 
 function reverse() {
-    if (sessionStorage.getItem("reverse") === "false") {
-        sessionStorage.setItem("reverse", "true")
-    } else {
-        sessionStorage.setItem("reverse", "false")
-    }
+    let mode = sessionStorage.getItem("reverse") === "false" ? "true" : "false"
+    sessionStorage.setItem("reverse", mode)
 }
 
 function onDaySelected() {
@@ -206,64 +252,40 @@ function doDirtyHack() {
     }
 }
 
-function getCurrentDate() {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    return mm + '-' + dd + '-' + yyyy;
-}
-
 document.addEventListener('keydown', function (event) {
     if (event.metaKey) {
-        if (event.key === 'j') {
-            loadTerm()
-        } else if (event.key === 'k') {
-            showAsso()
-        } else if (event.key === 'l') {
-            showTerm()
-        } else if (event.key === 'u') {
-            reverse()
-        } else if (event.key === 's') {
-            saveTerm()
+        switch (event["keyCode"]) {
+            case 74: // j
+                loadTerm()
+                break
+            case 75: // k
+                showAsso()
+                break
+            case 76: // l
+                showTerm()
+                break
+            case 85: // u
+                reverse()
+                break
+            case 83: // s
+                event.shiftKey ? updateTerm() : saveTerm()
+                break
+            case 79: // o
+                const fileName = getSelectedDay()
+                ipc.send('show-content', dataPath, fileName)
+                break
         }
     }
 });
 
 document.onpaste = function (pasteEvent) {
-    const item = pasteEvent.clipboardData.items[0];
+    const item = pasteEvent.clipboardData.items[0]
     if (item.type.indexOf("image") === 0) {
-        const reader = new FileReader();
+        const reader = new FileReader()
         reader.onload = function (event) {
-            document.getElementById("image").src = event.target.result;
+            document.getElementById("image").src = event.target.result
         };
-        const blob = item.getAsFile();
-        reader.readAsDataURL(blob);
+        const blob = item.getAsFile()
+        reader.readAsDataURL(blob)
     }
-}
-
-function tryPlayWord(word) {
-    try {
-        const url = `https://ssl.gstatic.com/dictionary/static/pronunciation/2022-03-02/audio/${word.substring(0, 2)}/${word}_en_us_1.mp3`
-        const audio = new Audio(url);
-        audio.play();
-    } catch (e) {
-        console.log(url)x
-        console.log(e)
-    }
-}
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = array[i];
-        array[i] = array[j];
-        array[j] = temp;
-    }
-}
-
-function uuidv4() {
-    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
 }
