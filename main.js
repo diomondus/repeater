@@ -1,4 +1,3 @@
-// Modules to control application life and create native browser window
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
 const electron = require('electron')
@@ -10,24 +9,19 @@ const appStoragePath = os.homedir() + '/.repeater'
 let dataPath
 
 function createWindow() {
-    // Create the browser window.
     const mainWindow = new BrowserWindow({
         width: 350,
         height: 750,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModeule: true,
-            devTools: true,
+            nodeIntegration: false,
+            contextIsolation: true,
+            enableRemoteModeule: false,
+            sandbox: true,
             preload: path.join(__dirname, 'preload.js')
         }
     })
-
-    // and load the index.html of the app.
     mainWindow.loadFile('index.html')
-
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools()
+//    mainWindow.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished
@@ -57,9 +51,10 @@ ipc.on('show-content', function (event, fileName) {
         width: 300,
         height: 650,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
+            nodeIntegration: false,
+            contextIsolation: true,
             enableRemoteModule: false,
+            sandbox: true,
             preload: path.join(__dirname, 'preload.js')
         }
     })
@@ -87,8 +82,8 @@ ipc.on('init-dirs', (event, categories) => {
             fs.mkdirSync(dir)
             fs.mkdirSync(dir + '/pictures')
         }
-        event.sender.send('dirs-inited')
     })
+    event.sender.send('dirs-inited')
 })
 
 ipc.on('init-data-path', (event, category) => {
@@ -97,21 +92,21 @@ ipc.on('init-data-path', (event, category) => {
     event.sender.send('data-path-inited')
 })
 
-ipc.on('load-days', event => {
+ipc.on('load-days', (event) => {
     storage.keys((error, keys) => {
         if (error) throw error
         event.sender.send('load-days', keys)
     })
 })
 
-ipc.on('onDaySelected', (event, day) => {
+ipc.on('on-day-selected', (event, day) => {
     storage.get(day, (error, contents) => {
-        event.sender.send('onDaySelected', contents)
+        if (error) throw error
+        event.sender.send('on-day-selected', contents)
     })
 })
 
 ipc.on('get-data-path', event => {
-    console.log("get-data-path")
     event.sender.send('receive-data-path', dataPath)
 })
 

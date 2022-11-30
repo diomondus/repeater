@@ -1,13 +1,15 @@
-const electron = require('electron')
-const ipc = electron.ipcRenderer
-
-ipc.on('show-content', (event, fileName, content) => {
+api.on('show-content', (event, title, content) => {
     let terms = document.getElementById("content")
     init(content, terms)
-    document.title = fileName // check
+    document.title = title
+    sessionStorage.setItem('title', title)
     sessionStorage.setItem('content', JSON.stringify(content))
 })
 
+let title = sessionStorage.getItem('title')
+if (title != null) {
+    document.title = title
+}
 let content = sessionStorage.getItem('content')
 if (content != null) {
     let terms = document.getElementById("content")

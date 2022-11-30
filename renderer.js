@@ -6,42 +6,36 @@
  * to expose Node.js functionality from the main process.
  */
 
-const electron = require('electron')
-const ipc = electron.ipcRenderer
-prepare()
-
-function prepare() {
+function init() {
     let categories = document.getElementById("cats").children
     let cats = []
     for (let i = 0; i < categories.length; i++) {
         let cat = categories[i].text.toLowerCase()
         cats.push(cat)
     }
-    ipc.send('init-dirs', cats)
+    api.send('init-dirs', cats)
 }
 
-ipc.on("dirs-inited", () => {
-    onCatSelected()
+api.on('dirs-inited', () => {
     sessionStorage.setItem("reverse", "true")
+    onCatSelected()
 })
 
 function loadTerm() {
     const fileName = getSelectedDay()
-    ipc.send("load-term", fileName)
+    api.send('load-term', fileName)
 }
 
-ipc.on("load-term", (event, contents) => {
+api.on('load-term', (event, contents) => {
     let prevWord = sessionStorage.getItem("prev")
     if (prevWord !== null) {
         tryPlayText(prevWord)
     }
-
     if (sessionStorage.getItem('inds') === null) {
-        console.log('inds is undefined')
         clearCtrls()
         sessionStorage.removeItem("prev")
-        onDaySelected()
-        doDirtyHack()
+//        onDaySelected()
+//        doDirtyHack()
     }
 
     let indexies = JSON.parse(sessionStorage.getItem('inds'))
@@ -79,19 +73,18 @@ function getSelectedDay() {
 function updateTerm() {
     const orig = document.getElementById('orig').value
     if (orig !== '') {
-        console.log("updateTerm inside")
         const fileName = getSelectedDay()
-        ipc.send('update-term', fileName, orig)
+        api.send('update-term', fileName, orig)
     }
 }
 
-ipc.on('update-term', (event, fileName, contents) => {
+api.on('update-term', (event, fileName, contents) => {
     const orig = document.getElementById('orig').value
     let filteredContents = contents.filter(c => {
         let b = c.orig !== orig
         if (!b && document.getElementById('image').src.startsWith("data")) {
             let imgName = c.img
-            ipc.send('remove-picture', imgName)
+            api.send('remove-picture', imgName)
         }
         return b
     })
@@ -101,11 +94,11 @@ ipc.on('update-term', (event, fileName, contents) => {
 function saveTerm() {
     if (document.getElementById('orig').value !== '') {
         let key = getCurrentDate()
-        ipc.send('save-term', key)
+        api.send('save-term', key)
     }
 }
 
-ipc.on('save-term', (event, key, contents) => {
+api.on('save-term', (event, key, contents) => {
     saveToFile(key, contents)
 })
 
@@ -125,7 +118,7 @@ function saveToFile(key, contents) {
                     addinfo: document.getElementById('add-info').value,
                     img: imgName
                 })
-                ipc.send('save-all-with-picture', key, imgName, Buffer.from(imgBytes), contents)
+                api.send('save-all-with-picture', key, imgName, Buffer.from(imgBytes), contents)
             })
     } else {
         let split = document.getElementById('image').src.split('/')
@@ -136,11 +129,11 @@ function saveToFile(key, contents) {
             addinfo: document.getElementById('add-info').value,
             img: imgName
         })
-        ipc.send('save-all', key, contents)
+        api.send('save-all', key, contents)
     }
 }
 
-ipc.on('saved-all', () => {
+api.on('saved-all', () => {
     clearCtrls()
 })
 
@@ -154,19 +147,18 @@ function showTerm() {
 }
 
 function showAsso() {
-    ipc.send("get-data-path")
+    api.send('get-data-path')
 }
 
-ipc.on('receive-data-path', (event, dataPath) => {
-    console.log(dataPath)
+api.on('receive-data-path', (event, dataPath) => {
     document.getElementById('image').src = dataPath + '/pictures/' + sessionStorage.getItem("image")
 })
 
 function loadDays() {
-    ipc.send('load-days')
+    api.send('load-days')
 }
 
-ipc.on('load-days', (event, keys) => {
+api.on('load-days', (event, keys) => {
     clearCtrls()
     let days = document.getElementById("days")
     if (days.hasChildNodes()) {
@@ -178,6 +170,7 @@ ipc.on('load-days', (event, keys) => {
         .map(key => createOption(key, today))
         .forEach(option => days.appendChild(option))
     days.selectedIndex = '0'
+    onDaySelected()
 })
 
 function createOption(date, today) {
@@ -203,30 +196,28 @@ function reverse() {
 }
 
 function onDaySelected() {
-    console.log("onDaySelected")
     const e = document.getElementById("days")
     if (e.children.length !== 0) {
         const day = e.options[e.selectedIndex].text.substring(0, 10)
-        ipc.send('onDaySelected', day)
+        api.send('on-day-selected', day)
     }
 }
 
-ipc.on('onDaySelected', (event, contents) => {
+api.on('on-day-selected', (event, contents) => {
     const indexies = [...Array(contents.length).keys()]
-    shuffleArray(indexies)
     sessionStorage.setItem('inds', JSON.stringify(indexies))
     sessionStorage.removeItem('prev')
+    clearCtrls()
 })
 
 function onCatSelected() {
     const catregories = document.getElementById("cats")
     const category = catregories.options[catregories.selectedIndex].text.toLowerCase()
-    ipc.send('init-data-path', category)
+    api.send('init-data-path', category)
 }
 
-ipc.on('data-path-inited', () => {
+api.on('data-path-inited', () => {
     loadDays()
-    onDaySelected()
 })
 
 function clearCtrls() {
@@ -234,16 +225,6 @@ function clearCtrls() {
     document.getElementById('image').src = ''
     document.getElementById('trans').value = ''
     document.getElementById('add-info').value = ''
-}
-
-function doDirtyHack() {
-    if (sessionStorage.getItem('firstLaunch') === null) {
-        try {
-            sessionStorage.setItem('firstLaunch', '0')
-            loadTerm()
-        } catch (e) {
-        }
-    }
 }
 
 document.addEventListener('keydown', function (event) {
@@ -266,7 +247,7 @@ document.addEventListener('keydown', function (event) {
                 break
             case 79: // o
                 const fileName = getSelectedDay()
-                ipc.send('show-content', fileName)
+                api.send('show-content', fileName)
                 break
         }
     }
@@ -283,3 +264,5 @@ document.onpaste = function (pasteEvent) {
         reader.readAsDataURL(blob)
     }
 }
+
+init()

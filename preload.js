@@ -6,27 +6,28 @@
  * https://www.electronjs.org/docs/latest/tutorial/sandbox
  */
 
-//const {
-//    contextBridge,
-//    ipcRenderer
-//} = require("electron");
-//
-//contextBridge.exposeInMainWorld(
-//        "api", {
-//            send: (channel, data) => {
-//                // whitelist channels
-//                let validChannels = ["showContent"];
-//                if (validChannels.includes(channel)) {
-//                    ipcRenderer.send(channel, data);
-//                }
-//            },
-//    receive: (channel, func) => {
-//                let validChannels = ["showContent"];
-//                if (validChannels.includes(channel)) {
-//                    // Deliberately strip event as it includes `sender`
-//                    ipcRenderer.on(channel, (event, ...args) => func(...args));
-//                }
-//            }
-//        }
-//        );
+const {
+    contextBridge,
+    ipcRenderer
+} = require("electron")
 
+contextBridge.exposeInMainWorld("api", {
+    send: (channel, ...args) => {
+//        console.log("api send: " + channel + " args: " + args)
+        let validChannels = ['init-dirs', 'load-term', 'update-term', 'remove-picture', 'save-term', 'show-content',
+            'save-all-with-picture', 'save-all', 'get-data-path', 'load-days', 'on-day-selected', 'init-data-path']
+        if (validChannels.includes(channel)) {
+            ipcRenderer.send(channel, ...args)
+        }
+    },
+    on: (channel, func) => {
+        let validChannels = ['dirs-inited', 'load-term', 'update-term', 'save-term', 'saved-all',
+            'receive-data-path', 'load-days', 'on-day-selected', 'data-path-inited', 'show-content']
+        if (validChannels.includes(channel)) {
+            ipcRenderer.on(channel, (event, ...args) => {
+//                console.log("api on: " + channel + " args: " + args)
+                func(event, ...args)
+            })
+        }
+    }
+});
