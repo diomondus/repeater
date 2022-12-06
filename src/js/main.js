@@ -1,12 +1,11 @@
-const {app, BrowserWindow} = require('electron')
+const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
-const electron = require('electron')
-const ipc = electron.ipcMain
 const storage = require('electron-json-storage')
 const os = require("os")
 const fs = require('fs')
 const appStoragePath = os.homedir() + '/.repeater'
 let dataPath
+let currentDayContent
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -46,7 +45,7 @@ app.on('window-all-closed', function () {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-ipc.on('show-content', function (event, fileName) {
+ipcMain.on('show-content', function (event, fileName) {
     let win = new BrowserWindow({
         width: 300,
         height: 650,
@@ -68,14 +67,7 @@ ipc.on('show-content', function (event, fileName) {
     })
 })
 
-ipc.on('load-term', (event, fileName) => {
-    storage.get(fileName, function (error, content) {
-        if (error) throw error
-        event.sender.send('load-term', content)
-    })
-})
-
-ipc.on('init-dirs', (event, categories) => {
+ipcMain.on('init-dirs', (event, categories) => {
     categories.forEach(category => {
         const dir = `${appStoragePath}/${category}`
         if (!fs.existsSync(dir)) {
@@ -86,7 +78,7 @@ ipc.on('init-dirs', (event, categories) => {
     event.sender.send('dirs-inited')
 })
 
-ipc.on('init-data-path', (event, category) => {
+ipcMain.on('load-days', (event, category) => {
     dataPath = appStoragePath + '/' + category
     storage.setDataPath(dataPath)
     storage.keys((error, keys) => {
@@ -95,54 +87,60 @@ ipc.on('init-data-path', (event, category) => {
     })
 })
 
-ipc.on('on-day-selected', (event, day) => {
+ipcMain.on('on-day-selected', (event, day) => {
     storage.get(day, (error, contents) => {
         if (error) throw error
-        event.sender.send('on-day-selected', contents)
+        shuffleArray(contents)
+        currentDayContent = contents
     })
 })
 
-ipc.on('get-data-path', event => {
+ipcMain.on('load-term', event => {
+    event.sender.send('load-term', currentDayContent.pop())
+})
+
+ipcMain.on('get-data-path', event => {
     event.sender.send('receive-data-path', dataPath)
 })
 
-ipc.on('save-term', (event, key) => {
-    storage.get(key, (error, contents) => {
-        if (error) throw error
-        if (Object.keys(contents).length === 0) {
-            contents = []
-        }
-        event.sender.send('save-term', key, contents)
-    })
-})
-
-ipc.on('update-term', (event, fileName) => {
+ipcMain.on('save-all', (event, fileName, term) => {
     storage.get(fileName, (error, contents) => {
-        if (error) throw error
-        event.sender.send('update-term', fileName, contents)
-    })
-})
-
-ipc.on('remove-picture', (event, fileName) => {
-    let filePath = dataPath + '/pictures/' + fileName
-    fs.unlink(filePath, () => {
-    })
-})
-
-ipc.on('save-all', (event, fileName, contents) => {
-    storage.set(fileName, contents, error => {
-        if (error) throw error
-        event.sender.send('saved-all')
-    })
-})
-
-ipc.on('save-all-with-picture', (event, fileName, imgName, imgBufer, contents) => {
-    let filePath = dataPath + '/pictures/' + imgName
-    fs.writeFile(filePath, Buffer.from(imgBufer), (err) => {
-        if (err) throw err
+        contents = Object.keys(contents).length === 0 ? [] : contents.filter(c => c.orig !== term.orig)
+        contents.push(term)
         storage.set(fileName, contents, error => {
             if (error) throw error
             event.sender.send('saved-all')
         })
     })
 })
+
+ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) => {
+    let filePath = dataPath + '/pictures/' + imgName
+    fs.writeFile(filePath, Buffer.from(imgBufer), error => {
+        if (error) throw error
+        storage.get(fileName, (error, contents) => {
+            if (error) throw error
+            contents = Object.keys(contents).length === 0 ? [] : contents.filter(c => {
+                if (c.orig === term.orig) {
+                    let filePath = dataPath + '/pictures/' + c.img
+                    fs.unlink(filePath, () => {})
+                }
+                return c.orig !== term.orig
+            })
+            contents.push(term)
+            storage.set(fileName, contents, error => {
+                if (error) throw error
+                event.sender.send('saved-all')
+            })
+        })
+    })
+})
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+}

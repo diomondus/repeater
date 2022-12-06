@@ -7,13 +7,13 @@
  */
 
 function init() {
-    let categories = document.getElementById("cats").children
-    let cats = []
-    for (let i = 0; i < categories.length; i++) {
-        let cat = categories[i].text.toLowerCase()
-        cats.push(cat)
+    let listOfCategories = document.getElementById("cats").children
+    let categories = []
+    for (let i = 0; i < listOfCategories.length; i++) {
+        let category = listOfCategories[i].text.toLowerCase()
+        categories.push(category)
     }
-    api.send('init-dirs', cats)
+    api.send('init-dirs', categories)
 }
 
 api.on('dirs-inited', () => {
@@ -24,7 +24,7 @@ api.on('dirs-inited', () => {
 function onCatSelected() {
     const catregories = document.getElementById("cats")
     const category = catregories.options[catregories.selectedIndex].text.toLowerCase()
-    api.send('init-data-path', category)
+    api.send('load-days', category)
 }
 
 api.on('days-loaded', (event, keys) => {
@@ -35,14 +35,16 @@ api.on('days-loaded', (event, keys) => {
     }
     const today = getCurrentDate()
     keys.sort()
-    .reverse()
-    .map(key => createOption(key, today))
-    .forEach(option => days.appendChild(option))
+        .reverse()
+        .map(key => createOption(key, today))
+        .forEach(option => days.appendChild(option))
     days.selectedIndex = '0'
     onDaySelected()
 })
 
 function onDaySelected() {
+    sessionStorage.removeItem('prev')
+    clearCtrls()
     const e = document.getElementById("days")
     if (e.children.length !== 0) {
         const day = e.options[e.selectedIndex].text.substring(0, 10)
@@ -50,57 +52,30 @@ function onDaySelected() {
     }
 }
 
-api.on('on-day-selected', (event, contents) => {
-    const indexies = [...Array(contents.length).keys()]
-    shuffleArray(indexies)
-    sessionStorage.setItem('inds', JSON.stringify(indexies))
-    sessionStorage.removeItem('prev')
-    clearCtrls()
-})
-
 function loadTerm() {
-    const fileName = getSelectedDay()
-    api.send('load-term', fileName)
+    api.send('load-term')
 }
 
-api.on('load-term', (event, contents) => {
-    let prevWord = sessionStorage.getItem("prev")
-    if (prevWord !== null) {
-        tryPlayText(prevWord)
+api.on('load-term', (event, term) => {
+    let prevTerm = sessionStorage.getItem("term")
+    if (prevTerm !== null) {
+        tryPlayText(JSON.parse(prevTerm).orig)
     }
     clearCtrls()
 
-    if (sessionStorage.getItem('inds') === null) {
-        sessionStorage.removeItem("prev")
-        sessionStorage.removeItem("orig")
-        sessionStorage.removeItem("trans")
-        sessionStorage.removeItem("image")
-        sessionStorage.removeItem("add-info")
+    if (term === undefined) {
+        sessionStorage.removeItem("term")
         onDaySelected()
         return
     }
 
-    let indexes = JSON.parse(sessionStorage.getItem('inds'))
-    let i = indexes.pop()
-    let content = contents[i]
-
     if (sessionStorage.getItem("reverse") === "false") {
-        document.getElementById('orig').value = content.orig
-        sessionStorage.setItem("trans", content.trans)
+        document.getElementById('orig').value = term.orig
     } else {
-        document.getElementById('trans').value = content.trans
-        sessionStorage.setItem("orig", content.orig)
+        document.getElementById('trans').value = term.trans
     }
 
-    sessionStorage.setItem("image", content.img)
-    sessionStorage.setItem("add-info", content.addinfo)
-
-    if (indexes.length === 0) {
-        sessionStorage.removeItem('inds')
-    } else {
-        sessionStorage.setItem('inds', JSON.stringify(indexes))
-        sessionStorage.setItem("prev", content.orig)
-    }
+    sessionStorage.setItem("term", JSON.stringify(term))
 })
 
 function getSelectedDay() {
@@ -108,69 +83,40 @@ function getSelectedDay() {
     return days.options[days.selectedIndex].text.substring(0, 10)
 }
 
-function updateTerm() {
-    const orig = document.getElementById('orig').value
-    if (orig !== '') {
-        const fileName = getSelectedDay()
-        api.send('update-term', fileName, orig)
-    }
-}
-
-api.on('update-term', (event, fileName, contents) => {
-    const orig = document.getElementById('orig').value
-    let filteredContents = contents.filter(c => {
-        let b = c.orig !== orig
-        if (!b && document.getElementById('image').src.startsWith("data")) {
-            let imgName = c.img
-            api.send('remove-picture', imgName)
-        }
-        return b
-    })
-    saveToFile(fileName, filteredContents)
-})
-
 function saveTerm() {
-    if (document.getElementById('orig').value !== '') {
-        let key = getCurrentDate()
-        api.send('save-term', key)
-    }
-}
-
-api.on('save-term', (event, key, contents) => {
-    saveToFile(key, contents)
-})
-
-function saveToFile(key, contents) {
-    let imagePath = document.getElementById('image').src
-    if (imagePath.startsWith("data")) {
-        fetch(imagePath)
-            .then(res => res.blob())
-            .then(blob => blob.arrayBuffer())
-            .then(imgBytes => {
-                let imgName = uuidv4() + '.png'
-                let orig = document.getElementById('orig').value.toLowerCase()
-                tryPlayText(orig)
-                contents.push({
-                    orig: orig,
-                    trans: document.getElementById('trans').value.toLowerCase(),
-                    addinfo: document.getElementById('add-info').value,
-                    img: imgName
+    let fileName = getCurrentDate()
+    let orig = document.getElementById('orig').value.toLowerCase()
+    if (orig !== '') {
+        tryPlayText(orig)
+        let imagePath = document.getElementById('image').src
+        if (imagePath.startsWith("data")) {
+            fetch(imagePath)
+                .then(res => res.blob())
+                .then(blob => blob.arrayBuffer())
+                .then(imgBytes => {
+                    let imgName = uuidv4() + '.png'
+                    let term = {
+                        orig: orig,
+                        trans: document.getElementById('trans').value.toLowerCase(),
+                        addinfo: document.getElementById('add-info').value,
+                        img: imgName
+                    }
+                    api.send('save-all-with-picture', fileName, imgName, imgBytes, term)
                 })
-                api.send('save-all-with-picture', key, imgName, imgBytes, contents)
-            })
-    } else {
-        let imgName = ''
-        if (!imagePath.includes('default')) {
-            let split = imagePath.split('/')
-            imgName = split[split.length - 1]
+        } else {
+            let imgName = ''
+            if (!imagePath.includes('default')) {
+                let split = imagePath.split('/')
+                imgName = split[split.length - 1]
+            }
+            let term = {
+                orig: orig,
+                trans: document.getElementById('trans').value.toLowerCase(),
+                addinfo: document.getElementById('add-info').value,
+                img: imgName
+            }
+            api.send('save-all', fileName, term)
         }
-        contents.push({
-            orig: document.getElementById('orig').value.toLowerCase(),
-            trans: document.getElementById('trans').value.toLowerCase(),
-            addinfo: document.getElementById('add-info').value,
-            img: imgName
-        })
-        api.send('save-all', key, contents)
     }
 }
 
@@ -179,22 +125,27 @@ api.on('saved-all', () => {
 })
 
 function showTerm() {
-    if (sessionStorage.getItem("reverse") === 'false') {
-        document.getElementById('trans').value = sessionStorage.getItem("trans")
-    } else {
-        document.getElementById('orig').value = sessionStorage.getItem("orig")
+    let term = JSON.parse(sessionStorage.getItem("term"))
+    if (term !== null) {
+        if (sessionStorage.getItem("reverse") === 'false') {
+            document.getElementById('trans').value = term.trans
+        } else {
+            document.getElementById('orig').value = term.orig
+        }
+        document.getElementById('add-info').value = term.addinfo
     }
-    document.getElementById('add-info').value = sessionStorage.getItem("add-info")
 }
 
-function showAsso() {
-    if (sessionStorage.getItem("image") ?? '' !== '') {
+function showImg() {
+    let term = JSON.parse(sessionStorage.getItem("term"))
+    if ((term ?? {img: ''}).img !== '') {
         api.send('get-data-path')
     }
 }
 
 api.on('receive-data-path', (event, dataPath) => {
-    document.getElementById('image').src = dataPath + '/pictures/' + sessionStorage.getItem("image")
+    let term = JSON.parse(sessionStorage.getItem("term"))
+    document.getElementById('image').src = dataPath + '/pictures/' + term.img
 })
 
 function createOption(date, today) {
@@ -233,7 +184,7 @@ document.addEventListener('keydown', function (event) {
                 loadTerm()
                 break
             case 75: // k
-                showAsso()
+                showImg()
                 break
             case 76: // l
                 showTerm()
@@ -242,7 +193,7 @@ document.addEventListener('keydown', function (event) {
                 reverse()
                 break
             case 83: // s
-                event.shiftKey ? updateTerm() : saveTerm()
+                saveTerm()
                 break
             case 79: // o
                 const fileName = getSelectedDay()

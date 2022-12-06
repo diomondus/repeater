@@ -6,36 +6,16 @@ function getCurrentDate() {
     return mm + '-' + dd + '-' + yyyy;
 }
 
-function pronounceUrl(word) {
+function getPronunciationServiceUrl(word) {
     return `https://ssl.gstatic.com/dictionary/static/pronunciation/2022-03-02/audio/${word.substring(0, 2)}/${word}_en_us_1.mp3`
 }
 
 function tryPlayText(text) {
-    let audios = text.split(" ").map(word => new Audio(pronounceUrl(word)))
+    let audios = text.split(" ").map(word => new Audio(getPronunciationServiceUrl(word)))
     for (let i = 1; i < audios.length; i++) {
         audios[i - 1].onended = () => audios[i].play();
     }
     audios[0].play()
-}
-
-
-function tryPlayWord(word) {
-    try {
-        const audio = new Audio(pronounceUrl(word));
-        return audio.play();
-    } catch (e) {
-        console.log(url)
-        console.log(e)
-    }
-}
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = array[i];
-        array[i] = array[j];
-        array[j] = temp;
-    }
 }
 
 function uuidv4() {
