@@ -13,7 +13,7 @@ const {
 
 const validChannels = ['init-dirs', 'dirs-inited', 'load-days', 'days-loaded',
     'on-day-selected', 'load-term', 'get-data-path', 'receive-data-path',
-    'saved-all', 'save-all-with-picture', 'show-content']
+    'save-all', 'saved-all', 'save-all-with-picture', 'show-content']
 
 contextBridge.exposeInMainWorld("api", {
     send: (channel, ...args) => {
