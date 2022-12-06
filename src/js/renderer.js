@@ -21,6 +21,43 @@ api.on('dirs-inited', () => {
     onCatSelected()
 })
 
+function onCatSelected() {
+    const catregories = document.getElementById("cats")
+    const category = catregories.options[catregories.selectedIndex].text.toLowerCase()
+    api.send('init-data-path', category)
+}
+
+api.on('days-loaded', (event, keys) => {
+    clearCtrls()
+    let days = document.getElementById("days")
+    if (days.hasChildNodes()) {
+        days.innerHTML = ''
+    }
+    const today = getCurrentDate()
+    keys.sort()
+    .reverse()
+    .map(key => createOption(key, today))
+    .forEach(option => days.appendChild(option))
+    days.selectedIndex = '0'
+    onDaySelected()
+})
+
+function onDaySelected() {
+    const e = document.getElementById("days")
+    if (e.children.length !== 0) {
+        const day = e.options[e.selectedIndex].text.substring(0, 10)
+        api.send('on-day-selected', day)
+    }
+}
+
+api.on('on-day-selected', (event, contents) => {
+    const indexies = [...Array(contents.length).keys()]
+    shuffleArray(indexies)
+    sessionStorage.setItem('inds', JSON.stringify(indexies))
+    sessionStorage.removeItem('prev')
+    clearCtrls()
+})
+
 function loadTerm() {
     const fileName = getSelectedDay()
     api.send('load-term', fileName)
@@ -160,25 +197,6 @@ api.on('receive-data-path', (event, dataPath) => {
     document.getElementById('image').src = dataPath + '/pictures/' + sessionStorage.getItem("image")
 })
 
-function loadDays() {
-    api.send('load-days')
-}
-
-api.on('load-days', (event, keys) => {
-    clearCtrls()
-    let days = document.getElementById("days")
-    if (days.hasChildNodes()) {
-        days.innerHTML = ''
-    }
-    const today = getCurrentDate()
-    keys.sort()
-        .reverse()
-        .map(key => createOption(key, today))
-        .forEach(option => days.appendChild(option))
-    days.selectedIndex = '0'
-    onDaySelected()
-})
-
 function createOption(date, today) {
     let option = document.createElement("option")
     let daysDiff = (new Date(today).getTime() - new Date(date).getTime()) / 86400000
@@ -200,32 +218,6 @@ function reverse() {
     let mode = sessionStorage.getItem("reverse") === "false" ? "true" : "false"
     sessionStorage.setItem("reverse", mode)
 }
-
-function onDaySelected() {
-    const e = document.getElementById("days")
-    if (e.children.length !== 0) {
-        const day = e.options[e.selectedIndex].text.substring(0, 10)
-        api.send('on-day-selected', day)
-    }
-}
-
-api.on('on-day-selected', (event, contents) => {
-    const indexies = [...Array(contents.length).keys()]
-    shuffleArray(indexies)
-    sessionStorage.setItem('inds', JSON.stringify(indexies))
-    sessionStorage.removeItem('prev')
-    clearCtrls()
-})
-
-function onCatSelected() {
-    const catregories = document.getElementById("cats")
-    const category = catregories.options[catregories.selectedIndex].text.toLowerCase()
-    api.send('init-data-path', category)
-}
-
-api.on('data-path-inited', () => {
-    loadDays()
-})
 
 function clearCtrls() {
     document.getElementById('orig').value = ''

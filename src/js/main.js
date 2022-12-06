@@ -89,13 +89,9 @@ ipc.on('init-dirs', (event, categories) => {
 ipc.on('init-data-path', (event, category) => {
     dataPath = appStoragePath + '/' + category
     storage.setDataPath(dataPath)
-    event.sender.send('data-path-inited')
-})
-
-ipc.on('load-days', (event) => {
     storage.keys((error, keys) => {
         if (error) throw error
-        event.sender.send('load-days', keys)
+        event.sender.send('days-loaded', keys)
     })
 })
 
