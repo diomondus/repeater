@@ -1,3 +1,7 @@
 mkdir -p out
 npm install electron-packager --save-dev
-electron-packager ./ --platform=darwin --arch=x64 --overwrite --out=./out
+electron-packager ./ --platform=darwin --arch=x64 --overwrite --out=./out --icon=src/resources/repeater.icns
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    rm -r /Applications/Repeater.app || 1
+    mv -f out/Repeater-darwin-x64/Repeater.app /Applications
+fi

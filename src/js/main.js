@@ -10,17 +10,17 @@ let dataPath
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
-        width: 350,
+        width: 325,
         height: 750,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            enableRemoteModeule: false,
+            enableRemoteModule: false,
             sandbox: true,
             preload: path.join(__dirname, 'preload.js')
         }
     })
-    mainWindow.loadFile('index.html')
+    mainWindow.loadFile('src/html/index.html')
 //    mainWindow.webContents.openDevTools()
 }
 
@@ -59,7 +59,7 @@ ipc.on('show-content', function (event, fileName) {
         }
     })
 //    win.webContents.openDevTools()
-    win.loadFile('content.html')
+    win.loadFile('src/html/content.html')
     win.webContents.once('dom-ready', () => {
         storage.get(fileName, function (error, contents) {
             if (error) throw error
@@ -142,7 +142,7 @@ ipc.on('save-all', (event, fileName, contents) => {
 
 ipc.on('save-all-with-picture', (event, fileName, imgName, imgBufer, contents) => {
     let filePath = dataPath + '/pictures/' + imgName
-    fs.writeFile(filePath, imgBufer, (err) => {
+    fs.writeFile(filePath, Buffer.from(imgBufer), (err) => {
         if (err) throw err
         storage.set(fileName, contents, error => {
             if (error) throw error

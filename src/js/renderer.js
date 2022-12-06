@@ -31,36 +31,37 @@ api.on('load-term', (event, contents) => {
     if (prevWord !== null) {
         tryPlayText(prevWord)
     }
+    clearCtrls()
+
     if (sessionStorage.getItem('inds') === null) {
-        clearCtrls()
         sessionStorage.removeItem("prev")
-//        onDaySelected()
-//        doDirtyHack()
+        sessionStorage.removeItem("orig")
+        sessionStorage.removeItem("trans")
+        sessionStorage.removeItem("image")
+        sessionStorage.removeItem("add-info")
+        onDaySelected()
+        return
     }
 
-    let indexies = JSON.parse(sessionStorage.getItem('inds'))
-    let i = indexies.pop()
+    let indexes = JSON.parse(sessionStorage.getItem('inds'))
+    let i = indexes.pop()
     let content = contents[i]
 
     if (sessionStorage.getItem("reverse") === "false") {
         document.getElementById('orig').value = content.orig
-        document.getElementById('trans').value = ''
         sessionStorage.setItem("trans", content.trans)
     } else {
-        document.getElementById('orig').value = ''
         document.getElementById('trans').value = content.trans
         sessionStorage.setItem("orig", content.orig)
     }
 
-    document.getElementById('image')["src"] = ''
     sessionStorage.setItem("image", content.img)
-    document.getElementById('add-info').value = ''
     sessionStorage.setItem("add-info", content.addinfo)
 
-    if (indexies.length === 0) {
+    if (indexes.length === 0) {
         sessionStorage.removeItem('inds')
     } else {
-        sessionStorage.setItem('inds', JSON.stringify(indexies))
+        sessionStorage.setItem('inds', JSON.stringify(indexes))
         sessionStorage.setItem("prev", content.orig)
     }
 })
@@ -103,9 +104,9 @@ api.on('save-term', (event, key, contents) => {
 })
 
 function saveToFile(key, contents) {
-    let image = document.getElementById('image').src
-    if (image.startsWith("data")) {
-        fetch(image)
+    let imagePath = document.getElementById('image').src
+    if (imagePath.startsWith("data")) {
+        fetch(imagePath)
             .then(res => res.blob())
             .then(blob => blob.arrayBuffer())
             .then(imgBytes => {
@@ -118,11 +119,14 @@ function saveToFile(key, contents) {
                     addinfo: document.getElementById('add-info').value,
                     img: imgName
                 })
-                api.send('save-all-with-picture', key, imgName, Buffer.from(imgBytes), contents)
+                api.send('save-all-with-picture', key, imgName, imgBytes, contents)
             })
     } else {
-        let split = document.getElementById('image').src.split('/')
-        let imgName = split[split.length - 1]
+        let imgName = ''
+        if (!imagePath.includes('default')) {
+            let split = imagePath.split('/')
+            imgName = split[split.length - 1]
+        }
         contents.push({
             orig: document.getElementById('orig').value.toLowerCase(),
             trans: document.getElementById('trans').value.toLowerCase(),
@@ -147,7 +151,9 @@ function showTerm() {
 }
 
 function showAsso() {
-    api.send('get-data-path')
+    if (sessionStorage.getItem("image") ?? '' !== '') {
+        api.send('get-data-path')
+    }
 }
 
 api.on('receive-data-path', (event, dataPath) => {
@@ -205,6 +211,7 @@ function onDaySelected() {
 
 api.on('on-day-selected', (event, contents) => {
     const indexies = [...Array(contents.length).keys()]
+    shuffleArray(indexies)
     sessionStorage.setItem('inds', JSON.stringify(indexies))
     sessionStorage.removeItem('prev')
     clearCtrls()
@@ -222,7 +229,7 @@ api.on('data-path-inited', () => {
 
 function clearCtrls() {
     document.getElementById('orig').value = ''
-    document.getElementById('image').src = ''
+    document.getElementById('image').src = '../resources/default.png'
     document.getElementById('trans').value = ''
     document.getElementById('add-info').value = ''
 }
@@ -248,6 +255,15 @@ document.addEventListener('keydown', function (event) {
             case 79: // o
                 const fileName = getSelectedDay()
                 api.send('show-content', fileName)
+                break
+            case 68: // d
+                const days = document.getElementById("days")
+                if (!event.shiftKey) {
+                    days.selectedIndex = (days.selectedIndex === days.children.length - 1) ? 0 : days.selectedIndex + 1
+                } else {
+                    days.selectedIndex = (days.selectedIndex === 0) ? days.children.length - 1 : days.selectedIndex - 1
+                }
+                onDaySelected()
                 break
         }
     }
