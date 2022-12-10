@@ -83,8 +83,7 @@ function getSelectedDay() {
     return days.options[days.selectedIndex].text.substring(0, 10)
 }
 
-function saveTerm() {
-    let fileName = getCurrentDate()
+function saveTerm(fileName) {
     let orig = document.getElementById('orig').value.toLowerCase()
     if (orig !== '') {
         tryPlayText(orig)
@@ -193,11 +192,11 @@ document.addEventListener('keydown', function (event) {
                 reverse()
                 break
             case 83: // s
-                saveTerm()
+                const fileName = event.shiftKey ? getSelectedDay() : getCurrentDate()
+                saveTerm(fileName)
                 break
             case 79: // o
-                const fileName = getSelectedDay()
-                api.send('show-content', fileName)
+                api.send('show-content', getSelectedDay())
                 break
             case 68: // d
                 const days = document.getElementById("days")
