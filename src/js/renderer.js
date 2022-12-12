@@ -84,7 +84,7 @@ function getSelectedDay() {
 }
 
 function saveTerm(fileName) {
-    let orig = document.getElementById('orig').value.toLowerCase()
+    let orig = document.getElementById('orig').value.trim().toLowerCase()
     if (orig !== '') {
         tryPlayText(orig)
         let imagePath = document.getElementById('image').src
@@ -96,7 +96,7 @@ function saveTerm(fileName) {
                     let imgName = uuidv4() + '.png'
                     let term = {
                         orig: orig,
-                        trans: document.getElementById('trans').value.toLowerCase(),
+                        trans: document.getElementById('trans').value.trim().toLowerCase(),
                         addinfo: document.getElementById('add-info').value,
                         img: imgName
                     }
@@ -110,7 +110,7 @@ function saveTerm(fileName) {
             }
             let term = {
                 orig: orig,
-                trans: document.getElementById('trans').value.toLowerCase(),
+                trans: document.getElementById('trans').value.trim().toLowerCase(),
                 addinfo: document.getElementById('add-info').value,
                 img: imgName
             }

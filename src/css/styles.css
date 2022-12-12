@@ -1,0 +1,31 @@
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #333;
+        color: white;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    body {
+        background: #ddd;
+        color: black;
+    }
+}
+
+.form-group {
+    width: auto;
+    max-width: 350px;
+    margin-top: 6px;
+    margin-left: 25px;
+}
+
+img {
+    height: 350px;
+}
+
+input[type="text"]
+{
+    text-align: center;
+    font-weight: bold;
+    font-size:18px;
+}

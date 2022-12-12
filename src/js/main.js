@@ -1,4 +1,4 @@
-const {app, BrowserWindow, ipcMain} = require('electron')
+const {app, BrowserWindow, ipcMain, nativeTheme} = require('electron')
 const path = require('path')
 const storage = require('electron-json-storage')
 const os = require("os")
@@ -9,8 +9,8 @@ let currentDayContent
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
-        width: 325,
-        height: 750,
+        width: 400,
+        height: 850,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -21,6 +21,7 @@ function createWindow() {
     })
     mainWindow.loadFile('src/html/index.html')
 //    mainWindow.webContents.openDevTools()
+    nativeTheme.themeSource = 'system'
 }
 
 // This method will be called when Electron has finished
@@ -90,8 +91,9 @@ ipcMain.on('load-days', (event, category) => {
 ipcMain.on('on-day-selected', (event, day) => {
     storage.get(day, (error, contents) => {
         if (error) throw error
-        shuffleArray(contents)
         currentDayContent = contents
+//        currentDayContent = prepareTerms(currentDayContent)
+        shuffleArray(currentDayContent)
     })
 })
 
@@ -135,6 +137,14 @@ ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) =
         })
     })
 })
+
+function prepareTerms(contents) {
+    return contents.map(term => term.trans.split(', ').map(trans => {
+        const cloneTerm = Object.assign({}, term);
+        cloneTerm.trans = trans
+        return cloneTerm
+    })).flatMap(e => e)
+}
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
