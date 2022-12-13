@@ -48,8 +48,8 @@ app.on('window-all-closed', function () {
 // code. You can also put them in separate files and require them here.
 ipcMain.on('show-content', function (event, fileName) {
     let win = new BrowserWindow({
-        width: 300,
-        height: 650,
+        width: 400,
+        height: 700,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -93,6 +93,14 @@ ipcMain.on('on-day-selected', (event, day) => {
         if (error) throw error
         currentDayContent = contents
 //        currentDayContent = prepareTerms(currentDayContent)
+        shuffleArray(currentDayContent)
+    })
+})
+
+ipcMain.on('global-train', event => {
+    storage.keys((error, keys) => {
+        if (error) throw error
+        currentDayContent = keys.map(day => storage.getSync(day)).flatMap(e => e)
         shuffleArray(currentDayContent)
     })
 })

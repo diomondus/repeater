@@ -7,12 +7,7 @@
  */
 
 function init() {
-    let listOfCategories = document.getElementById("cats").children
-    let categories = []
-    for (let i = 0; i < listOfCategories.length; i++) {
-        let category = listOfCategories[i].text.toLowerCase()
-        categories.push(category)
-    }
+    const categories = [...document.getElementById("cats").children].map(e => e.text.toLowerCase());
     api.send('init-dirs', categories)
 }
 
@@ -207,11 +202,14 @@ document.addEventListener('keydown', function (event) {
                 }
                 onDaySelected()
                 break
+            case 71:
+                api.send('global-train')
+                break
         }
     }
 })
 
-document.onpaste = function (pasteEvent) {
+document.onpaste = pasteEvent => {
     const item = pasteEvent.clipboardData.items[0]
     if (item.type.indexOf("image") === 0) {
         const reader = new FileReader()
@@ -222,5 +220,26 @@ document.onpaste = function (pasteEvent) {
         reader.readAsDataURL(blob)
     }
 }
+
+function handlePaste(event) {
+    event.stopPropagation()
+    event.preventDefault()
+    let clipboardData = event.clipboardData || window.clipboardData
+    let pastedData = clipboardData.getData('Text')
+
+    if (pastedData !== '') {
+        if (pastedData.includes('-')) {
+            let split = pastedData.toLowerCase().split('-')
+            document.getElementById("orig").value = split[0].trim()
+            document.getElementById("trans").value = split[1].trim()
+            tryPlayText(split[0].trim())
+        } else {
+            document.getElementById("orig").value = pastedData.toLowerCase()
+            tryPlayText(pastedData.toLowerCase())
+        }
+    }
+}
+
+document.getElementById('orig').addEventListener('paste', handlePaste)
 
 init()

@@ -23,8 +23,9 @@ if (content != null) {
 function init(content, terms) {
     content.forEach(term => {
         let option = document.createElement("option")
-        option.innerHTML = term.orig
+        option.innerHTML = term.orig + ' ' + term.trans
         terms.appendChild(option)
     })
     terms.size = content.length
+    document.getElementById("words").innerHTML = content.length + ' words'
 }
