@@ -12,7 +12,7 @@ function init() {
 }
 
 api.on('dirs-inited', () => {
-    sessionStorage.setItem("reverse", "true")
+    reverse()
     onCatSelected()
 })
 
@@ -162,8 +162,12 @@ function createOption(date, today) {
 }
 
 function reverse() {
-    let mode = sessionStorage.getItem("reverse") === "false" ? "true" : "false"
+    clearCtrls()
+    let rev = sessionStorage.getItem("reverse")
+    let mode = rev === "false" || rev === null ? "true" : "false"
+    document.title = mode === "true" ? "Repeater Rus -> Eng" :  "Repeater Eng -> Rus"
     sessionStorage.setItem("reverse", mode)
+    api.send('set-reversable', mode)
 }
 
 function clearCtrls() {
@@ -222,6 +226,8 @@ function onNewDay() {
     let option = document.createElement("option")
     option.innerHTML = newDay
     days.insertBefore(option, day)
+    days.selectedIndex = 0
+    onDaySelected()
 }
 
 document.onpaste = pasteEvent => {

@@ -12,7 +12,7 @@ const {
 } = require("electron")
 
 const validChannels = ['init-dirs', 'dirs-inited', 'load-days', 'days-loaded',
-    'on-day-selected', 'load-term', 'get-data-path', 'receive-data-path',
+    'on-day-selected', 'set-reversable', 'load-term', 'get-data-path', 'receive-data-path',
     'save-all', 'saved-all', 'save-all-with-picture', 'show-content', 'global-train']
 
 contextBridge.exposeInMainWorld("api", {

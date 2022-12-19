@@ -4,8 +4,11 @@ const storage = require('electron-json-storage')
 const os = require("os")
 const fs = require('fs')
 const appStoragePath = os.homedir() + '/.repeater'
-let dataPath
-let currentDayContent
+var dataPath
+var currentDayContent = []
+var currDay
+var isReversed = false
+var wasLast = true
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -89,12 +92,15 @@ ipcMain.on('load-days', (event, category) => {
 })
 
 ipcMain.on('on-day-selected', (event, day) => {
-    storage.get(day, (error, contents) => {
-        if (error) throw error
-        currentDayContent = contents
-//        currentDayContent = prepareTerms(currentDayContent)
-        shuffleArray(currentDayContent)
-    })
+    currDay = day
+    currentDayContent = []
+    wasLast = true
+})
+
+ipcMain.on('set-reversable', (event, mode) => {
+    isReversed = mode === 'true'
+    currentDayContent = []
+    wasLast = true
 })
 
 ipcMain.on('global-train', event => {
@@ -106,7 +112,22 @@ ipcMain.on('global-train', event => {
 })
 
 ipcMain.on('load-term', event => {
-    event.sender.send('load-term', currentDayContent.pop())
+    if (currentDayContent.length === 0) {
+        if (!wasLast) {
+            wasLast = true
+            event.sender.send('load-term', currentDayContent.pop())
+        } else {
+            wasLast = false
+            storage.get(currDay, (error, contents) => {
+                if (error) throw error
+                currentDayContent = isReversed ? prepareTerms(contents) : contents
+                shuffleArray(currentDayContent)
+                event.sender.send('load-term', currentDayContent.pop())
+            })
+        }
+    } else {
+        event.sender.send('load-term', currentDayContent.pop())
+    }
 })
 
 ipcMain.on('get-data-path', event => {
