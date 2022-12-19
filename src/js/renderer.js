@@ -42,7 +42,7 @@ function onDaySelected() {
     clearCtrls()
     const e = document.getElementById("days")
     if (e.children.length !== 0) {
-        const day = e.options[e.selectedIndex].text.substring(0, 10)
+        const day = e.options[e.selectedIndex].text.substring(0, 12)
         api.send('on-day-selected', day)
     }
 }
@@ -75,10 +75,11 @@ api.on('load-term', (event, term) => {
 
 function getSelectedDay() {
     const days = document.getElementById("days")
-    return days.options[days.selectedIndex].text.substring(0, 10)
+    return days.options[days.selectedIndex].text.substring(0, 12)
 }
 
-function saveTerm(fileName) {
+function saveTerm() {
+    let fileName = getSelectedDay()
     let orig = document.getElementById('orig').value.trim().toLowerCase()
     if (orig !== '') {
         tryPlayText(orig)
@@ -115,6 +116,7 @@ function saveTerm(fileName) {
 }
 
 api.on('saved-all', () => {
+    sessionStorage.removeItem("term")
     clearCtrls()
 })
 
@@ -144,7 +146,7 @@ api.on('receive-data-path', (event, dataPath) => {
 
 function createOption(date, today) {
     let option = document.createElement("option")
-    let daysDiff = (new Date(today).getTime() - new Date(date).getTime()) / 86400000
+    let daysDiff = (new Date(today).getTime() - new Date(date.substring(0, 10)).getTime()) / 86400000
     switch (daysDiff) {
         case 0:
             option.innerHTML = date
@@ -187,8 +189,7 @@ document.addEventListener('keydown', function (event) {
                 reverse()
                 break
             case 83: // s
-                const fileName = event.shiftKey ? getSelectedDay() : getCurrentDate()
-                saveTerm(fileName)
+                saveTerm()
                 break
             case 79: // o
                 api.send('show-content', getSelectedDay())
@@ -202,12 +203,26 @@ document.addEventListener('keydown', function (event) {
                 }
                 onDaySelected()
                 break
-            case 71:
+            case 71: // g
                 api.send('global-train')
+                break
+            case 78: // n
+                onNewDay()
                 break
         }
     }
 })
+
+function onNewDay() {
+    const days = document.getElementById("days")
+    const day = days.options[0]
+    let dayValue = day.value
+    let currDay = getCurrentDate()
+    let newDay = dayValue.startsWith(currDay) ? `${currDay}-${parseInt(dayValue[11]) + 1}` : getCurrentDate() + '-0'
+    let option = document.createElement("option")
+    option.innerHTML = newDay
+    days.insertBefore(option, day)
+}
 
 document.onpaste = pasteEvent => {
     const item = pasteEvent.clipboardData.items[0]
