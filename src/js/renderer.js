@@ -6,28 +6,38 @@
  * to expose Node.js functionality from the main process.
  */
 
+init()
 function init() {
-    const categories = [...document.getElementById("cats").children].map(e => e.text.toLowerCase());
+    document.title = "Repeater Eng -> Rus"
+    document.getElementById('image').style.display = 'none'
+    document.getElementById('orig').addEventListener('paste', splitPasted)
+    document.onpaste = pasteEvent => onImagePasted(pasteEvent)
+    document.addEventListener('keydown', event => onKeyEvent(event) )
+    api.on('dirs-inited', () => onCatSelected())
+    api.on('days-loaded', (event, keys) => onDaysLoaded(keys))
+    api.on('load-day', (event, content) => onDayLoaded(content))
+    api.on('saved-all', () => onSavedAll())
+    api.on('receive-data-path', (event, dataPath) => onDataPathReceived(dataPath))
+
+    sessionStorage.setItem('reverse', 'false')
+    sessionStorage.setItem('mixed', 'false')
+    sessionStorage.setItem('current', JSON.stringify([]))
+    const categories = [...document.getElementById("cats").children].map(e => e.text.toLowerCase())
     api.send('init-dirs', categories)
 }
 
-api.on('dirs-inited', () => {
-    reverse()
-    onCatSelected()
-})
-
 function onCatSelected() {
-    const catregories = document.getElementById("cats")
-    const category = catregories.options[catregories.selectedIndex].text.toLowerCase()
+    const category = getSelectedCat()
     api.send('load-days', category)
 }
 
-api.on('days-loaded', (event, keys) => {
+function onDaysLoaded(keys) {
     clearCtrls()
     let days = document.getElementById("days")
     if (days.hasChildNodes()) {
         days.innerHTML = ''
     }
+
     const today = getCurrentDate()
     keys.sort()
         .reverse()
@@ -35,95 +45,132 @@ api.on('days-loaded', (event, keys) => {
         .forEach(option => days.appendChild(option))
     days.selectedIndex = '0'
     onDaySelected()
-})
+}
 
 function onDaySelected() {
     sessionStorage.removeItem('prev')
     clearCtrls()
-    const e = document.getElementById("days")
-    if (e.children.length !== 0) {
-        const day = e.options[e.selectedIndex].text.substring(0, 12)
-        api.send('on-day-selected', day)
+    let day = getSelectedDay()
+    let json = sessionStorage.getItem(getSelectedCat() + '-' + day)
+    if (json !== null) {
+        const content = JSON.parse(json)
+        handleContent(content)
+    } else {
+        api.send('load-day', day)
     }
 }
 
-function loadTerm() {
-    api.send('load-term')
+function onDayLoaded(content) {
+    sessionStorage.setItem(getSelectedCat() + '-' + getSelectedDay(), JSON.stringify(content))
+    handleContent(content)
 }
 
-api.on('load-term', (event, term) => {
+function handleContent(content) {
+    content = !isNotReversed() && !isNotMixed() ? prepareTerms(content) : content
+    shuffleArray(content)
+    document.getElementById('count').innerHTML = `${content.length} left`
+    content.unshift({})
+    sessionStorage.setItem('current', JSON.stringify(content))
+}
+
+function loadTerm() {
+    var content = JSON.parse(sessionStorage.getItem('current'))
+    if (content.length === 0) {
+        onDaySelected()
+        content = JSON.parse(sessionStorage.getItem('current'))
+    }
     let prevTerm = sessionStorage.getItem("term")
     if (prevTerm !== null) {
         tryPlayText(JSON.parse(prevTerm).orig)
     }
     clearCtrls()
 
-    if (term === undefined) {
+    let term = content.pop()
+    document.getElementById('count').innerHTML = `${content.length} left`
+
+    if (Object.keys(term).length === 0) {
         sessionStorage.removeItem("term")
-        onDaySelected()
+        sessionStorage.setItem('current', JSON.stringify([]))
         return
     }
 
-    if (sessionStorage.getItem("reverse") === "false") {
+    if (isNotReversed()) {
         document.getElementById('orig').value = term.orig
     } else {
         document.getElementById('trans').value = term.trans
     }
 
     sessionStorage.setItem("term", JSON.stringify(term))
-})
+    sessionStorage.setItem('current', JSON.stringify(content))
+}
+
+function isNotReversed() {
+    return sessionStorage.getItem('reverse') === 'false'
+}
+
+function isNotMixed() {
+    return sessionStorage.getItem('mixed') === 'false'
+}
 
 function getSelectedDay() {
     const days = document.getElementById("days")
     return days.options[days.selectedIndex].text.substring(0, 12)
 }
 
+function getSelectedCat() {
+    const catregories = document.getElementById("cats")
+    return catregories.options[catregories.selectedIndex].text.toLowerCase()
+}
+
 function saveTerm() {
-    let fileName = getSelectedDay()
-    let orig = document.getElementById('orig').value.trim().toLowerCase()
-    if (orig !== '') {
-        tryPlayText(orig)
-        let imagePath = document.getElementById('image').src
-        if (imagePath.startsWith("data")) {
-            fetch(imagePath)
-                .then(res => res.blob())
-                .then(blob => blob.arrayBuffer())
-                .then(imgBytes => {
-                    let imgName = uuidv4() + '.png'
-                    let term = {
-                        orig: orig,
-                        trans: document.getElementById('trans').value.trim().toLowerCase(),
-                        addinfo: document.getElementById('add-info').value,
-                        img: imgName
-                    }
-                    api.send('save-all-with-picture', fileName, imgName, imgBytes, term)
-                })
-        } else {
-            let imgName = ''
-            if (!imagePath.includes('default')) {
-                let split = imagePath.split('/')
-                imgName = split[split.length - 1]
+    if (isNotReversed()) {
+        let day = getSelectedDay()
+        sessionStorage.removeItem(getSelectedCat() + '-' + day)
+        let orig = document.getElementById('orig').value.trim().toLowerCase()
+        if (orig !== '') {
+            tryPlayText(orig)
+            let imagePath = document.getElementById('image').src
+            if (imagePath.startsWith("data")) {
+                fetch(imagePath)
+                    .then(res => res.blob())
+                    .then(blob => blob.arrayBuffer())
+                    .then(imgBytes => {
+                        let imgName = uuidv4() + '.png'
+                        let term = {
+                            orig: orig,
+                            trans: document.getElementById('trans').value.trim().toLowerCase(),
+                            addinfo: document.getElementById('add-info').value,
+                            img: imgName
+                        }
+                        api.send('save-all-with-picture', day, imgName, imgBytes, term)
+                    })
+            } else {
+                let imgName = ''
+                if (!imagePath.includes('default')) {
+                    let split = imagePath.split('/')
+                    imgName = split[split.length - 1]
+                }
+                let term = {
+                    orig: orig,
+                    trans: document.getElementById('trans').value.trim().toLowerCase(),
+                    addinfo: document.getElementById('add-info').value,
+                    img: imgName
+                }
+                api.send('save-all', day, term)
             }
-            let term = {
-                orig: orig,
-                trans: document.getElementById('trans').value.trim().toLowerCase(),
-                addinfo: document.getElementById('add-info').value,
-                img: imgName
-            }
-            api.send('save-all', fileName, term)
         }
     }
 }
 
-api.on('saved-all', () => {
+function onSavedAll() {
     sessionStorage.removeItem("term")
     clearCtrls()
-})
+}
 
 function showTerm() {
     let term = JSON.parse(sessionStorage.getItem("term"))
     if (term !== null) {
-        if (sessionStorage.getItem("reverse") === 'false') {
+        if (isNotReversed()) {
             document.getElementById('trans').value = term.trans
         } else {
             document.getElementById('orig').value = term.orig
@@ -139,10 +186,23 @@ function showImg() {
     }
 }
 
-api.on('receive-data-path', (event, dataPath) => {
+function onDataPathReceived(dataPath) {
     let term = JSON.parse(sessionStorage.getItem("term"))
     document.getElementById('image').src = dataPath + '/pictures/' + term.img
-})
+}
+
+function hideOrShowImgTag() {
+    let imgGroup = document.getElementById('image')
+    if (imgGroup.style.display === '') {
+        imgGroup.style.display = 'none'
+        document.getElementById('asso').innerHTML = 'Association (Hidden)'
+        api.send('hide-img')
+    } else {
+        imgGroup.style.display = ''
+        document.getElementById('asso').innerHTML = 'Association'
+        api.send('show-img')
+    }
+}
 
 function createOption(date, today) {
     let option = document.createElement("option")
@@ -162,12 +222,20 @@ function createOption(date, today) {
 }
 
 function reverse() {
-    clearCtrls()
     let rev = sessionStorage.getItem("reverse")
-    let mode = rev === "false" || rev === null ? "true" : "false"
-    document.title = mode === "true" ? "Repeater Rus -> Eng" :  "Repeater Eng -> Rus"
+    let mode = rev === "true" || rev === null ? "false" : "true"
+    document.title = mode === "true" ? "Repeater Rus -> Eng" : "Repeater Eng -> Rus"
     sessionStorage.setItem("reverse", mode)
-    api.send('set-reversable', mode)
+    sessionStorage.setItem('current', JSON.stringify([]))
+    onDaySelected()
+}
+
+function mixed() {
+    let mixed = sessionStorage.getItem("mixed")
+    let mode = mixed === "true" || mixed === null ? "false" : "true"
+    sessionStorage.setItem("mixed", mode)
+    sessionStorage.setItem('current', JSON.stringify([]))
+    onDaySelected()
 }
 
 function clearCtrls() {
@@ -176,10 +244,12 @@ function clearCtrls() {
     document.getElementById('trans').value = ''
     document.getElementById('add-info').value = ''
 }
-
-document.addEventListener('keydown', function (event) {
+function onKeyEvent(event) {
     if (event.metaKey) {
         switch (event["keyCode"]) {
+            case 73: // i
+                hideOrShowImgTag()
+                break
             case 74: // j
                 loadTerm()
                 break
@@ -213,9 +283,12 @@ document.addEventListener('keydown', function (event) {
             case 78: // n
                 onNewDay()
                 break
+            case 84: // е
+                mixed()
+                break
         }
     }
-})
+}
 
 function onNewDay() {
     const days = document.getElementById("days")
@@ -230,7 +303,30 @@ function onNewDay() {
     onDaySelected()
 }
 
-document.onpaste = pasteEvent => {
+function splitPasted(event) {
+    event.stopPropagation()
+    event.preventDefault()
+    let clipboardData = event.clipboardData || window.clipboardData
+    let pastedData = clipboardData.getData('Text')
+
+    if (pastedData !== '') {
+        if (pastedData.includes('-')) {
+            let split = pastedData.toLowerCase().split('-')
+            document.getElementById('orig').value = split[0].trim()
+            document.getElementById('trans').value = split[1].trim()
+            document.getElementById('add-info').focus()
+            if (split.length > 2) {
+                document.getElementById('add-info').value = split[2].trim()
+            }
+            tryPlayText(split[0].trim())
+        } else {
+            document.getElementById('orig').value = pastedData.toLowerCase()
+            tryPlayText(pastedData.toLowerCase())
+        }
+    }
+}
+
+function onImagePasted(pasteEvent) {
     const item = pasteEvent.clipboardData.items[0]
     if (item.type.indexOf("image") === 0) {
         const reader = new FileReader()
@@ -242,25 +338,19 @@ document.onpaste = pasteEvent => {
     }
 }
 
-function handlePaste(event) {
-    event.stopPropagation()
-    event.preventDefault()
-    let clipboardData = event.clipboardData || window.clipboardData
-    let pastedData = clipboardData.getData('Text')
-
-    if (pastedData !== '') {
-        if (pastedData.includes('-')) {
-            let split = pastedData.toLowerCase().split('-')
-            document.getElementById("orig").value = split[0].trim()
-            document.getElementById("trans").value = split[1].trim()
-            tryPlayText(split[0].trim())
-        } else {
-            document.getElementById("orig").value = pastedData.toLowerCase()
-            tryPlayText(pastedData.toLowerCase())
-        }
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const temp = array[i]
+        array[i] = array[j]
+        array[j] = temp
     }
 }
 
-document.getElementById('orig').addEventListener('paste', handlePaste)
-
-init()
+function prepareTerms(contents) {
+    return contents.map(term => term.trans.split(', ').map(trans => {
+        const cloneTerm = Object.assign({}, term)
+        cloneTerm.trans = trans
+        return cloneTerm
+    })).flatMap(e => e)
+}

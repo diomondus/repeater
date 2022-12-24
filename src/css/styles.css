@@ -14,18 +14,33 @@
 
 .form-group {
     width: auto;
-    max-width: 350px;
+    max-width: 462px;
     margin-top: 6px;
     margin-left: 25px;
 }
 
 img {
-    height: 350px;
+    height: auto;
+    max-height: 350px;
+    width: auto;
+    max-width: 350px;
+    margin-left: 56px;
 }
 
-input[type="text"]
-{
+input[type="text"] {
     text-align: center;
     font-weight: bold;
-    font-size:18px;
+    font-size: 18px;
+}
+
+#trans {
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#count {
+    display: inline-block;
+    width: 87%;
+    text-align: right;
 }

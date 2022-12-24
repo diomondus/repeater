@@ -4,16 +4,13 @@ const storage = require('electron-json-storage')
 const os = require("os")
 const fs = require('fs')
 const appStoragePath = os.homedir() + '/.repeater'
-var dataPath
-var currentDayContent = []
-var currDay
-var isReversed = false
-var wasLast = true
+let dataPath
+let mainWindow
 
 function createWindow() {
-    const mainWindow = new BrowserWindow({
-        width: 400,
-        height: 850,
+    mainWindow = new BrowserWindow({
+        width: 512,
+        height: 600,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -51,8 +48,8 @@ app.on('window-all-closed', function () {
 // code. You can also put them in separate files and require them here.
 ipcMain.on('show-content', function (event, fileName) {
     let win = new BrowserWindow({
-        width: 400,
-        height: 700,
+        width: 512,
+        height: 935,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -91,43 +88,20 @@ ipcMain.on('load-days', (event, category) => {
     })
 })
 
-ipcMain.on('on-day-selected', (event, day) => {
-    currDay = day
-    currentDayContent = []
-    wasLast = true
-})
+//ipcMain.on('global-train', event => {
+//    storage.keys((error, keys) => {
+//        if (error) throw error
+//        currentDayContent = keys.map(day => storage.getSync(day)).flatMap(e => e)
+//        shuffleArray(currentDayContent)
+//    })
+//})
 
-ipcMain.on('set-reversable', (event, mode) => {
-    isReversed = mode === 'true'
-    currentDayContent = []
-    wasLast = true
-})
-
-ipcMain.on('global-train', event => {
-    storage.keys((error, keys) => {
+ipcMain.on('load-day', (event, day) => {
+    storage.get(day, (error, content) => {
         if (error) throw error
-        currentDayContent = keys.map(day => storage.getSync(day)).flatMap(e => e)
-        shuffleArray(currentDayContent)
-    })
-})
 
-ipcMain.on('load-term', event => {
-    if (currentDayContent.length === 0) {
-        if (!wasLast) {
-            wasLast = true
-            event.sender.send('load-term', currentDayContent.pop())
-        } else {
-            wasLast = false
-            storage.get(currDay, (error, contents) => {
-                if (error) throw error
-                currentDayContent = isReversed ? prepareTerms(contents) : contents
-                shuffleArray(currentDayContent)
-                event.sender.send('load-term', currentDayContent.pop())
-            })
-        }
-    } else {
-        event.sender.send('load-term', currentDayContent.pop())
-    }
+        event.sender.send('load-day', Object.keys(content).length === 0 ? [] : content)
+    })
 })
 
 ipcMain.on('get-data-path', event => {
@@ -167,19 +141,5 @@ ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) =
     })
 })
 
-function prepareTerms(contents) {
-    return contents.map(term => term.trans.split(', ').map(trans => {
-        const cloneTerm = Object.assign({}, term);
-        cloneTerm.trans = trans
-        return cloneTerm
-    })).flatMap(e => e)
-}
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = array[i];
-        array[i] = array[j];
-        array[j] = temp;
-    }
-}
+ipcMain.on('hide-img', () => mainWindow.setSize(512, 600))
+ipcMain.on('show-img', () => mainWindow.setSize(512, 935))
