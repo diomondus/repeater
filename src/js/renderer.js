@@ -11,6 +11,7 @@ function init() {
     document.title = "Repeater Eng -> Rus"
     document.getElementById('image').style.display = 'none'
     document.getElementById('orig').addEventListener('paste', splitPasted)
+    document.getElementById("search-res").style.display = 'none'
     document.onpaste = pasteEvent => onImagePasted(pasteEvent)
     document.addEventListener('keydown', event => onKeyEvent(event) )
     api.on('dirs-inited', () => onCatSelected())
@@ -18,6 +19,7 @@ function init() {
     api.on('load-day', (event, content) => onDayLoaded(content))
     api.on('saved-all', () => onSavedAll())
     api.on('receive-data-path', (event, dataPath) => onDataPathReceived(dataPath))
+    api.on('search', (event, content) => onSearched(content))
 
     sessionStorage.setItem('reverse', 'false')
     sessionStorage.setItem('mixed', 'false')
@@ -74,7 +76,7 @@ function handleContent(content) {
 }
 
 function loadTerm() {
-    var content = JSON.parse(sessionStorage.getItem('current'))
+    let content = JSON.parse(sessionStorage.getItem('current'));
     if (content.length === 0) {
         onDaySelected()
         content = JSON.parse(sessionStorage.getItem('current'))
@@ -244,6 +246,7 @@ function clearCtrls() {
     document.getElementById('trans').value = ''
     document.getElementById('add-info').value = ''
 }
+
 function onKeyEvent(event) {
     if (event.metaKey) {
         switch (event["keyCode"]) {
@@ -301,6 +304,33 @@ function onNewDay() {
     days.insertBefore(option, day)
     days.selectedIndex = 0
     onDaySelected()
+}
+
+function onSearch() {
+    const search = document.getElementById("search").value
+    document.getElementById("search-res").innerHTML = ''
+    if (search.length > 1) {
+        api.send('search', search)
+    } else {
+        document.getElementById("search-res").style.display = 'none'
+    }
+}
+
+function onSearched(content) {
+    console.log(content)
+    let searchList = document.getElementById("search-res")
+    if (content.length < 3) {
+        searchList.style.display = 'none'
+    } else {
+        searchList.style.display = ''
+        let jsonArray = JSON.parse(content)
+        jsonArray.forEach( json => {
+            let option = document.createElement("option")
+            option.innerHTML = JSON.stringify(json)
+            searchList.appendChild(option)
+        })
+        searchList.size = jsonArray.length > 10 ? 10 : jsonArray.length
+    }
 }
 
 function splitPasted(event) {

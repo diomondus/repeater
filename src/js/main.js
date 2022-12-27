@@ -3,6 +3,8 @@ const path = require('path')
 const storage = require('electron-json-storage')
 const os = require("os")
 const fs = require('fs')
+const exec = require('child_process').exec;
+
 const appStoragePath = os.homedir() + '/.repeater'
 let dataPath
 let mainWindow
@@ -10,7 +12,7 @@ let mainWindow
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 512,
-        height: 600,
+        height: 935,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -77,6 +79,7 @@ ipcMain.on('init-dirs', (event, categories) => {
         }
     })
     event.sender.send('dirs-inited')
+    search('ble')
 })
 
 ipcMain.on('load-days', (event, category) => {
@@ -143,3 +146,15 @@ ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) =
 
 ipcMain.on('hide-img', () => mainWindow.setSize(512, 600))
 ipcMain.on('show-img', () => mainWindow.setSize(512, 935))
+
+ipcMain.on('search', (event, text) => {
+    const cmd = `grep -R --exclude-dir=pictures --exclude='.DS_Store' '${text}' ${dataPath} | sed 's/.*\\({[^{]*${text}[^}]*}\\).*/\\1/'`
+    exec(cmd, (error, stdout, stderr) => {
+        let terms = stdout.split('\n').filter(term => term !== '')
+        event.sender.send('search', `[${terms}]`)
+        console.log('stderr: ' + stderr)
+        if (error !== null) {
+            console.log('exec error: ' + error)
+        }
+    })
+})
