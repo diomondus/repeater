@@ -79,7 +79,6 @@ ipcMain.on('init-dirs', (event, categories) => {
         }
     })
     event.sender.send('dirs-inited')
-    search('ble')
 })
 
 ipcMain.on('load-days', (event, category) => {
@@ -144,17 +143,39 @@ ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) =
     })
 })
 
-ipcMain.on('hide-img', () => mainWindow.setSize(512, 600))
-ipcMain.on('show-img', () => mainWindow.setSize(512, 935))
-
 ipcMain.on('search', (event, text) => {
-    const cmd = `grep -R --exclude-dir=pictures --exclude='.DS_Store' '${text}' ${dataPath} | sed 's/.*\\({[^{]*${text}[^}]*}\\).*/\\1/'`
+    const cmd = `cd ${dataPath} && grep -R -l --include='*.json' '${text}' .`
     exec(cmd, (error, stdout, stderr) => {
-        let terms = stdout.split('\n').filter(term => term !== '')
-        event.sender.send('search', `[${terms}]`)
-        console.log('stderr: ' + stderr)
-        if (error !== null) {
-            console.log('exec error: ' + error)
-        }
+        let fileNames = stdout
+            .split('\n')
+            .filter(name => name !== '')
+            .map(name => name.substring(2, name.length - 5))
+
+        let promises = fileNames.map(fileName => new Promise((resolve, reject) => {
+            storage.get(fileName, (error, contents) => {
+                if (error) reject(error)
+                else {
+                    contents = contents.filter(term => term.orig.includes(text) || term.trans.includes(text))
+                    contents.forEach(term => term.path = fileName)
+                    resolve(contents)
+                }
+            })
+        }))
+
+        Promise.all(promises).then((values) => {
+            values = values
+                .flatMap(t => t)
+                .sort((a, b) => {
+                    const t0 = text.charAt(0)
+                    const t1 = text.charAt(1)
+                    if (a.orig.charAt(0) === t0 && a.orig.charAt(1) === t1) return -1
+                    if (b.orig.charAt(0) === t0 && b.orig.charAt(1) === t1) return 1
+                    if (a.orig.charAt(0) === t0) return -1
+                    if (b.orig.charAt(0) === t0) return 1
+                    if (a.orig < b.orig) return -1
+                    if (a.orig >= b.orig) return 1
+                })
+            event.sender.send('search', values)
+        });
     })
 })

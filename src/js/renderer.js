@@ -198,11 +198,9 @@ function hideOrShowImgTag() {
     if (imgGroup.style.display === '') {
         imgGroup.style.display = 'none'
         document.getElementById('asso').innerHTML = 'Association (Hidden)'
-        api.send('hide-img')
     } else {
         imgGroup.style.display = ''
         document.getElementById('asso').innerHTML = 'Association'
-        api.send('show-img')
     }
 }
 
@@ -250,6 +248,9 @@ function clearCtrls() {
 function onKeyEvent(event) {
     if (event.metaKey) {
         switch (event["keyCode"]) {
+            case 70: // f
+                document.getElementById('search').focus()
+                break
             case 73: // i
                 hideOrShowImgTag()
                 break
@@ -317,20 +318,16 @@ function onSearch() {
 }
 
 function onSearched(content) {
-    console.log(content)
-    let searchList = document.getElementById("search-res")
-    if (content.length < 3) {
-        searchList.style.display = 'none'
-    } else {
-        searchList.style.display = ''
-        let jsonArray = JSON.parse(content)
-        jsonArray.forEach( json => {
-            let option = document.createElement("option")
-            option.innerHTML = JSON.stringify(json)
-            searchList.appendChild(option)
-        })
-        searchList.size = jsonArray.length > 10 ? 10 : jsonArray.length
-    }
+    let searchList = document.getElementById('search-res')
+    searchList.style.display = ''
+    content = prepareTerms(content)
+    content.forEach(json => {
+        let option = document.createElement('option')
+        let origTrans = json.orig + ' — ' + json.trans
+        option.innerHTML = origTrans + ' | ' + json.path
+        searchList.appendChild(option)
+    })
+    searchList.size = content.length > 10 ? 10 : content.length
 }
 
 function splitPasted(event) {

@@ -17,6 +17,7 @@
     max-width: 462px;
     margin-top: 6px;
     margin-left: 25px;
+    overflow-x: scroll
 }
 
 img {
@@ -43,4 +44,8 @@ input[type="text"] {
     display: inline-block;
     width: 87%;
     text-align: right;
+}
+
+#search-res {
+    margin-top: 3px;
 }
