@@ -7,13 +7,14 @@
  */
 
 init()
+
 function init() {
     document.title = "Repeater Eng -> Rus"
     document.getElementById('image').style.display = 'none'
     document.getElementById('orig').addEventListener('paste', splitPasted)
     document.getElementById("search-res").style.display = 'none'
     document.onpaste = pasteEvent => onImagePasted(pasteEvent)
-    document.addEventListener('keydown', event => onKeyEvent(event) )
+    document.addEventListener('keydown', event => onKeyEvent(event))
     api.on('dirs-inited', () => onCatSelected())
     api.on('days-loaded', (event, keys) => onDaysLoaded(keys))
     api.on('load-day', (event, content) => onDayLoaded(content))
@@ -41,9 +42,13 @@ function onDaysLoaded(keys) {
     }
 
     const today = getCurrentDate()
-    keys.sort()
-        .reverse()
+    keys.sort((a, b) => {
+        let arr1 = a.split("-")
+        let arr2 = b.split("-")
+        return new Date(arr1[2], arr1[0], arr1[1]) - new Date(arr2[2], arr2[0], arr2[1])
+    })
         .map(key => createOption(key, today))
+        .reverse()
         .forEach(option => days.appendChild(option))
     days.selectedIndex = '0'
     onDaySelected()
@@ -160,6 +165,7 @@ function saveTerm() {
                 }
                 api.send('save-all', day, term)
             }
+            document.getElementById('orig').focus()
         }
     }
 }
@@ -215,7 +221,7 @@ function createOption(date, today) {
             option.innerHTML = `${date} (-${daysDiff} day)`
             break
         default:
-            option.innerHTML = `${date} (-${daysDiff} days)`
+            option.innerHTML = daysDiff > 0 ? `${date} (-${daysDiff} days)` : `${date} (+${-daysDiff} days)`
             break
     }
     return option

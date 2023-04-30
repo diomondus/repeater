@@ -20,6 +20,14 @@
     overflow-x: scroll
 }
 
+.form-group-ext {
+    width: auto;
+    max-width: 962px;
+    margin-top: 6px;
+    margin-left: 25px;
+    overflow-x: scroll
+}
+
 img {
     height: auto;
     max-height: 350px;

@@ -23,7 +23,10 @@ if (content != null) {
 function init(content, terms) {
     content.forEach(term => {
         let option = document.createElement("option")
-        option.innerHTML = term.orig + ' ' + term.trans
+        option.innerHTML = term.orig.padEnd(20, "_") + term.trans
+        if (term.addinfo) {
+            option.innerHTML += "______" + term.addinfo
+        }
         terms.appendChild(option)
     })
     terms.size = content.length

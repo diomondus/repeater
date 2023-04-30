@@ -50,7 +50,7 @@ app.on('window-all-closed', function () {
 // code. You can also put them in separate files and require them here.
 ipcMain.on('show-content', function (event, fileName) {
     let win = new BrowserWindow({
-        width: 512,
+        width: 1012,
         height: 935,
         webPreferences: {
             nodeIntegration: false,
