@@ -12,20 +12,20 @@ const {
 } = require("electron")
 
 const validChannels = ['init-dirs', 'dirs-inited', 'load-days', 'days-loaded',
-    'load-day', 'get-data-path', 'receive-data-path', 'search',
-    'save-all', 'saved-all', 'save-all-with-picture', 'show-content', 'global-train']
+    'load-day', 'get-data-path', 'receive-data-path', 'search', 'update-cache',
+    'save-all', 'save-day', 'saved-all', 'save-all-with-picture', 'show-content', 'global-train']
 
 contextBridge.exposeInMainWorld("api", {
     send: (channel, ...args) => {
         if (validChannels.includes(channel)) {
-//            console.log("api send: " + channel + " args: " + args)
+           // console.log("api send: " + channel + " args: " + args)
             ipcRenderer.send(channel, ...args)
         }
     },
     on: (channel, func) => {
         if (validChannels.includes(channel)) {
             ipcRenderer.on(channel, (event, ...args) => {
-//                console.log("api on: " + channel + " args: " + args)
+               // console.log("api on: " + channel + " args: " + args)
                 func(event, ...args)
             })
         }

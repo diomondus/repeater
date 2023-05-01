@@ -19,6 +19,7 @@ function init() {
     api.on('days-loaded', (event, keys) => onDaysLoaded(keys))
     api.on('load-day', (event, content) => onDayLoaded(content))
     api.on('saved-all', () => onSavedAll())
+    api.on('update-cache', (event, content) => onDayLoaded(content))
     api.on('receive-data-path', (event, dataPath) => onDataPathReceived(dataPath))
     api.on('search', (event, content) => onSearched(content))
 
@@ -58,9 +59,9 @@ function onDaySelected() {
     sessionStorage.removeItem('prev')
     clearCtrls()
     let day = getSelectedDay()
-    let json = sessionStorage.getItem(getSelectedCat() + '-' + day)
-    if (json !== null) {
-        const content = JSON.parse(json)
+    let jsonString = sessionStorage.getItem(getSelectedCat() + '-' + day)
+    if (jsonString !== null) {
+        const content = JSON.parse(jsonString)
         handleContent(content)
     } else {
         api.send('load-day', day)
@@ -173,6 +174,10 @@ function saveTerm() {
 function onSavedAll() {
     sessionStorage.removeItem("term")
     clearCtrls()
+}
+
+function onUpdateCache(fileName, terms) {
+    sessionStorage.setItem(getSelectedCat() + '-' + fileName, JSON.stringify(terms))
 }
 
 function showTerm() {

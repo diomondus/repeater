@@ -22,13 +22,20 @@
 
 .form-group-ext {
     width: auto;
-    max-width: 962px;
+    max-width: 1562px;
     margin-top: 6px;
     margin-left: 25px;
     overflow-x: scroll
 }
 
-img {
+button {
+    width: 50px;
+    height: 50px;
+    margin-right: 7px;
+    border-radius: 50%;
+}
+
+.img {
     height: auto;
     max-height: 350px;
     width: auto;
@@ -56,4 +63,16 @@ input[type="text"] {
 
 #search-res {
     margin-top: 3px;
+}
+
+.numberLabel {
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+    width: 50px;
+    display:inline-block
+}
+
+.termLabel {
+    font-size: 18px;
 }

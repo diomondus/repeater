@@ -50,7 +50,7 @@ app.on('window-all-closed', function () {
 // code. You can also put them in separate files and require them here.
 ipcMain.on('show-content', function (event, fileName) {
     let win = new BrowserWindow({
-        width: 1012,
+        width: 1512,
         height: 935,
         webPreferences: {
             nodeIntegration: false,
@@ -63,10 +63,18 @@ ipcMain.on('show-content', function (event, fileName) {
 //    win.webContents.openDevTools()
     win.loadFile('src/html/content.html')
     win.webContents.once('dom-ready', () => {
-        storage.get(fileName, function (error, contents) {
-            if (error) throw error
-            win.webContents.send('show-content', fileName, contents)
-        })
+        storage.has(fileName, (error, hasKey) => {
+            if (error) throw error;
+            if (hasKey) {
+                storage.get(fileName, (error, contents) => {
+                    contents = Object.keys(contents).length === 0 ? [] : contents
+                    win.webContents.send('show-content', fileName, contents)
+                })
+            } else {
+                win.webContents.send('show-content', fileName, [])
+            }
+        });
+
     })
 })
 
@@ -118,6 +126,14 @@ ipcMain.on('save-all', (event, fileName, term) => {
             if (error) throw error
             event.sender.send('saved-all')
         })
+    })
+})
+
+ipcMain.on('save-day', (event, fileName, terms) => {
+    storage.set(fileName, terms, error => {
+        if (error) throw error
+        event.sender.send('saved-all')
+        mainWindow.webContents.send('update-cache', terms)
     })
 })
 
