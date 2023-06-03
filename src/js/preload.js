@@ -29,5 +29,6 @@ contextBridge.exposeInMainWorld("api", {
                 func(event, ...args)
             })
         }
-    }
+    },
+    openDialog: (method, config) => ipcRenderer.invoke('dialog', method, config)
 });

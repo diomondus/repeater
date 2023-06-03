@@ -1,4 +1,4 @@
-const {app, BrowserWindow, ipcMain, nativeTheme} = require('electron')
+const {app, BrowserWindow, ipcMain, dialog, nativeTheme} = require('electron')
 const path = require('path')
 const storage = require('electron-json-storage')
 const os = require("os")
@@ -66,9 +66,9 @@ ipcMain.on('show-content', function (event, fileName) {
         storage.has(fileName, (error, hasKey) => {
             if (error) throw error;
             if (hasKey) {
-                storage.get(fileName, (error, contents) => {
-                    contents = Object.keys(contents).length === 0 ? [] : contents
-                    win.webContents.send('show-content', fileName, contents)
+                storage.get(fileName, (error, terms) => {
+                    terms = Object.keys(terms).length === 0 ? [] : terms
+                    win.webContents.send('show-content', fileName, terms)
                 })
             } else {
                 win.webContents.send('show-content', fileName, [])
@@ -119,12 +119,12 @@ ipcMain.on('get-data-path', event => {
 })
 
 ipcMain.on('save-all', (event, fileName, term) => {
-    storage.get(fileName, (error, contents) => {
-        contents = Object.keys(contents).length === 0 ? [] : contents.filter(c => c.orig !== term.orig)
-        contents.push(term)
-        storage.set(fileName, contents, error => {
+    storage.get(fileName, (error, terms) => {
+        terms = Object.keys(terms).length === 0 ? [] : terms.filter(c => c.orig !== term.orig)
+        terms.push(term)
+        storage.set(fileName, terms, error => {
             if (error) throw error
-            event.sender.send('saved-all')
+            event.sender.send('update-cache', fileName, terms)
         })
     })
 })
@@ -132,8 +132,7 @@ ipcMain.on('save-all', (event, fileName, term) => {
 ipcMain.on('save-day', (event, fileName, terms) => {
     storage.set(fileName, terms, error => {
         if (error) throw error
-        event.sender.send('saved-all')
-        mainWindow.webContents.send('update-cache', terms)
+        mainWindow.webContents.send('update-cache', fileName, terms)
     })
 })
 
@@ -141,19 +140,19 @@ ipcMain.on('save-all-with-picture', (event, fileName, imgName, imgBufer, term) =
     let filePath = dataPath + '/pictures/' + imgName
     fs.writeFile(filePath, Buffer.from(imgBufer), error => {
         if (error) throw error
-        storage.get(fileName, (error, contents) => {
+        storage.get(fileName, (error, terms) => {
             if (error) throw error
-            contents = Object.keys(contents).length === 0 ? [] : contents.filter(c => {
+            terms = Object.keys(terms).length === 0 ? [] : terms.filter(c => {
                 if (c.orig === term.orig) {
                     let filePath = dataPath + '/pictures/' + c.img
                     fs.unlink(filePath, () => {})
                 }
                 return c.orig !== term.orig
             })
-            contents.push(term)
-            storage.set(fileName, contents, error => {
+            terms.push(term)
+            storage.set(fileName, terms, error => {
                 if (error) throw error
-                event.sender.send('saved-all')
+                event.sender.send('update-cache', fileName, terms)
             })
         })
     })
@@ -168,12 +167,12 @@ ipcMain.on('search', (event, text) => {
             .map(name => name.substring(2, name.length - 5))
 
         let promises = fileNames.map(fileName => new Promise((resolve, reject) => {
-            storage.get(fileName, (error, contents) => {
+            storage.get(fileName, (error, terms) => {
                 if (error) reject(error)
                 else {
-                    contents = contents.filter(term => term.orig.includes(text) || term.trans.includes(text))
-                    contents.forEach(term => term.path = fileName)
-                    resolve(contents)
+                    terms = terms.filter(term => term.orig.includes(text) || term.trans.includes(text))
+                    terms.forEach(term => term.path = fileName)
+                    resolve(terms)
                 }
             })
         }))
@@ -195,3 +194,5 @@ ipcMain.on('search', (event, text) => {
         });
     })
 })
+
+ipcMain.handle('dialog', (event, method, params) => dialog[method](params))

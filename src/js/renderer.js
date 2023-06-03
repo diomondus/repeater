@@ -19,7 +19,7 @@ function init() {
     api.on('days-loaded', (event, keys) => onDaysLoaded(keys))
     api.on('load-day', (event, content) => onDayLoaded(content))
     api.on('saved-all', () => onSavedAll())
-    api.on('update-cache', (event, content) => onDayLoaded(content))
+    api.on('update-cache', (event, day, content) => onUpdateContent(day,  content))
     api.on('receive-data-path', (event, dataPath) => onDataPathReceived(dataPath))
     api.on('search', (event, content) => onSearched(content))
 
@@ -66,6 +66,10 @@ function onDaySelected() {
     } else {
         api.send('load-day', day)
     }
+}
+
+function onUpdateContent(day, content) {
+    sessionStorage.setItem(getSelectedCat() + '-' + day, JSON.stringify(content))
 }
 
 function onDayLoaded(content) {
@@ -126,13 +130,12 @@ function getSelectedDay() {
 }
 
 function getSelectedCat() {
-    const catregories = document.getElementById("cats")
-    return catregories.options[catregories.selectedIndex].text.toLowerCase()
+    const categories = document.getElementById("cats")
+    return categories.options[categories.selectedIndex].text.toLowerCase()
 }
 
-function saveTerm() {
+function saveTerm(day) {
     if (isNotReversed()) {
-        let day = getSelectedDay()
         sessionStorage.removeItem(getSelectedCat() + '-' + day)
         let orig = document.getElementById('orig').value.trim().toLowerCase()
         if (orig !== '') {
@@ -174,10 +177,6 @@ function saveTerm() {
 function onSavedAll() {
     sessionStorage.removeItem("term")
     clearCtrls()
-}
-
-function onUpdateCache(fileName, terms) {
-    sessionStorage.setItem(getSelectedCat() + '-' + fileName, JSON.stringify(terms))
 }
 
 function showTerm() {
@@ -278,7 +277,7 @@ function onKeyEvent(event) {
                 reverse()
                 break
             case 83: // s
-                saveTerm()
+                saveTerm(getSelectedDay())
                 break
             case 79: // o
                 api.send('show-content', getSelectedDay())
@@ -291,6 +290,22 @@ function onKeyEvent(event) {
                     days.selectedIndex = (days.selectedIndex === 0) ? days.children.length - 1 : days.selectedIndex - 1
                 }
                 onDaySelected()
+                break
+            case 66: // b
+                let term = JSON.parse(sessionStorage.getItem("term"))
+                let day = document.getElementById("days").options[0].text.substring(0, 12)
+                if (term !== null) {
+                    const dialogConfig = {
+                        type: 'question',
+                        buttons: ['OK', 'Cancel'],
+                        message: `Would you like to copy "${term.orig}" to file "${day}"?`,
+                    }
+                    api.openDialog('showMessageBox', dialogConfig).then(result => {
+                        if (result.response === 0) {
+                            api.send('save-all', day, term)
+                        }
+                    })
+                }
                 break
             case 71: // g
                 api.send('global-train')
