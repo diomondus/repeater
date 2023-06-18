@@ -334,10 +334,10 @@ function onNewDay() {
 }
 
 function onSearch() {
-    const search = document.getElementById("search").value
+    const searchText = document.getElementById("search").value.toLowerCase()
     document.getElementById("search-res").innerHTML = ''
-    if (search.length > 1) {
-        api.send('search', search)
+    if (searchText.length > 1) {
+        api.send('search', searchText)
     } else {
         document.getElementById("search-res").style.display = 'none'
     }
